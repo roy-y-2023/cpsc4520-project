@@ -1,0 +1,11 @@
+job_id,run_type,framework,diseaseTransmissionChance,diseaseTagStringLength,agentImmuneSystemLength,diseaseSugarMetabolismPenalty,duration_seconds,status
+221,disease,bentham,1.0,5,10,2,2.2,OK
+222,disease,bentham,1.0,5,10,3,0.6,OK
+223,disease,bentham,1.0,5,35,0,11.7,OK
+224,disease,bentham,1.0,5,35,2,0.6,OK
+225,disease,bentham,1.0,5,35,3,0.6,OK
+226,disease,bentham,1.0,5,60,0,12.3,OK
+227,disease,bentham,1.0,5,60,2,3.2,OK
+228,disease,bentham,1.0,5,60,3,3.2,OK
+229,disease,bentham,1.0,13,10,0,18.9,OK
+230,disease,bentham,1.0,13,10,2,0.6,OK

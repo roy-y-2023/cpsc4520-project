@@ -1,0 +1,11 @@
+job_id,run_type,framework,diseaseTransmissionChance,diseaseTagStringLength,agentImmuneSystemLength,diseaseSugarMetabolismPenalty,duration_seconds,status
+111,disease,altruist,0.6,5,10,0,11.2,OK
+112,disease,altruist,0.6,5,10,2,0.2,OK
+113,disease,altruist,0.6,5,10,3,0.1,OK
+114,disease,altruist,0.6,5,35,0,9.1,OK
+115,disease,altruist,0.6,5,35,2,0.2,OK
+116,disease,altruist,0.6,5,35,3,0.2,OK
+117,disease,altruist,0.6,5,60,0,9.6,OK
+118,disease,altruist,0.6,5,60,2,2.5,OK
+119,disease,altruist,0.6,5,60,3,2.3,OK
+120,disease,altruist,0.6,13,10,0,14.9,OK

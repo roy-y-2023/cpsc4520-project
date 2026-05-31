@@ -1,0 +1,11 @@
+job_id,run_type,framework,diseaseTransmissionChance,diseaseTagStringLength,agentImmuneSystemLength,diseaseSugarMetabolismPenalty,duration_seconds,status
+641,disease,temperancePECS,1.0,13,10,3,0.1,OK
+642,disease,temperancePECS,1.0,13,35,0,15.7,OK
+643,disease,temperancePECS,1.0,13,35,2,0.2,OK
+644,disease,temperancePECS,1.0,13,35,3,0.2,OK
+645,disease,temperancePECS,1.0,13,60,0,17.1,OK
+646,disease,temperancePECS,1.0,13,60,2,0.3,OK
+647,disease,temperancePECS,1.0,13,60,3,0.3,OK
+648,disease,temperancePECS,1.0,21,10,0,16.7,OK
+649,disease,temperancePECS,1.0,21,10,2,0.1,OK
+650,disease,temperancePECS,1.0,21,10,3,0.1,OK
