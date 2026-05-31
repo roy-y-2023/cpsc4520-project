@@ -1,0 +1,3 @@
+[submodule "sugarscape"]
+	path = sugarscape
+	url = https://github.com/nkremerh/sugarscape
