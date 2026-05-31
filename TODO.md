@@ -57,36 +57,44 @@
 ## Phase 3 — Data Retrieval & Aggregation (May 31, Morning)
 
 - [x] **3.1 Pull data from ACES**
-  JSON logs and timing CSVs transferred back to local machine.
+  JSON logs and timing CSVs transferred to local machine.
 
-- [ ] **3.2 Implement `SugarCluster/aggregate.py`**
-  Parse all 656 JSON logs. Extract per-timestep metrics:
-  - `sickAgentsPercentage`, `population`, `meanDeathsPercentage`, `meanAgeAtDeath`
-  - `giniCoefficient`, `meanHappiness`, `meanWealth`
-  - Group by `(run_type, framework, transmission, tagLength, immunity, penalty)`
-  - Track `time_to_extinction` from log data
+- [x] **3.2 Implement `SugarCluster/aggregate.py`**
+  Parses all 656 JSON logs + timing CSVs + `jobs.csv` → `results/run_summary.csv`
+  - Per-run summary: `final_timestep`, `survived`, `time_to_extinction`, `peak_sick_percentage`, `avg_sick_percentage`, death counts
+  - Derived metrics: `wealth_gini_change`, `happiness_decline`
+  - Baseline comparison via `delta_*` columns (e.g., `delta_final_gini`, `delta_final_happiness`)
+  - Timing merged from per-batch CSVs
 
-- [ ] **3.3 Implement `SugarCluster/analyze.py`**
-  Compute summary statistics per parameter combo:
-  - Time-to-peak infection / time-to-extinction
-  - Steady-state sick percentage or final outcome
-  - Survival rate across frameworks (disease vs baseline)
-  - Gini & happiness under pandemic
-  - Simulation duration statistics (from timing CSVs)
+- [x] **3.3 Implement `SugarCluster/analyze.py`**
+  Loads `run_summary.csv` → `results/summary_stats.csv` (648 grouped rows) + `results/framework_comparison.csv` (8 rows)
+  - Groups by `(framework, transmission, tagLength, immunity, penalty)` for granular analysis
+  - Aggregates across all disease params per framework for high-level comparison
 
 ---
 
 ## Phase 4 — Visualization (May 31, Afternoon)
 
-- [ ] **4.1 Generate comparison plots**
-  - Heatmaps: infection peak vs. (transmission × immunity) per framework
-  - Line charts: `sickAgentsPercentage` over time for best/worst frameworks
-  - Bar charts: survival rate & Gini coefficient across frameworks
-  - Scatter: simulation duration vs. disease severity (for presentation)
+- [x] **4.1 Generate comparison plots** (7 figures, timing-focused)
+  1. `cumulative_completion.png` — real (SLURM sacct) vs theoretical cumulative completion
+  2. `slurm_task_duration.png` — histogram of 66 SLURM task durations (34–82s)
+  3. `node_distribution.png` — ACES node load distribution (20 nodes)
+  4. `timing_by_penalty.png` — per-sim duration by penalty (bimodal: 0.1s vs 10s)
+  5. `heatmap_penalty0.png` — peak infection heatmaps, **penalty=0 only** (where frameworks differ)
+  6. `survival_stacked.png` — survival rate by penalty level per framework
+  7. `gini_penalty0.png` — Gini delta for penalty=0 subset
 
-- [ ] **4.2 Answer the two research questions**
-  - *Q1: Which parameters maximize/minimize spread?*
-  - *Q2: How do socio-economics interact with pandemics?*
+- [x] **4.2 Distributed Systems Timing Stats**
+  - **25.7x parallelism** — 3,681 serial-seconds completed in 143s wall time
+  - **16,515 sims/wall-hour** throughput
+  - **1.3% batch overhead** — only 0.8s of Python startup per 10-sim batch
+  - **20 ACES nodes**, 66 SLURM tasks, 1722415 job array
+
+- [x] **4.3 Key Scientific Findings**
+  - **Penalty dominates everything** — penalty=0 → 100% survival; penalty=2/3 → 11% survival regardless of framework
+  - **All 8 frameworks are near-identical** — disease severity physics overwhelm ethical differences
+  - **Delta Gini ≈ 0 for penalty=0** — mean inequality unchanged by pandemic (blue = baseline, orange = pandemic)
+  - **Short simulations (<0.5s) are instant extinction** — penalty=2/3 kills all 250 agents at timestep 1
 
 ---
 
@@ -99,11 +107,10 @@
     - Audience have general understanding of distributed computing, but not ACES specifically
   3. Results showcase (plots) (2 min)
   4. Challenges & lessons learned (2 min)
-     - Distributed runtime selection (SLURM vs Makeflow)
-     - Windows/Linux path separator issues (CRLF)
-     - Hardcoded absolute paths vs configurable PROJECT_DIR
+     - Distributed runtime selection (SLURM vs Drona Workflow Engine / TAMULauncher vs MPI vs setting up something with CCTools)
      - ACES job array QOS limits → hybrid batching
-     - Disease parameter scaling (scalar vs list values; penalty severity)
+     - Windows/Linux path separator issues (CRLF). Code runs locally might not run on a external cluster easily.
+     - Disease parameter scaling (penalty severity)
   5. Future work (1 min)
     - Make it support more parameters.
     - Make it portable to other users and clusters.

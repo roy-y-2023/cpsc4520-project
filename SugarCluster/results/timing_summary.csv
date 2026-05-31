@@ -1,0 +1,2 @@
+total_sims,total_slurm_tasks,num_nodes,total_wall_seconds,total_wall_minutes,total_core_seconds,total_sim_seconds,avg_slurm_elapsed,min_slurm_elapsed,max_slurm_elapsed,avg_sim_duration,sims_per_wall_hour,avg_batch_overhead_pct,avg_batch_overhead_s,parallelism_factor,total_duration_hhmmss
+656,66,20,143.0,2.3833333333333333,3733,3680.6,56.56060606060606,34,82,5.610670731707317,16514.685314685314,1.3234744026534813,0.7939393939393941,25.73846153846154,2:23
