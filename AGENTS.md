@@ -2,28 +2,72 @@
 
 ## Project Overview
 
-**SugarCluster** — Middleware to run the Sugarscape agent-based simulation at scale for disease spread experiments. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in `SugarCluster/`.
+**SugarCluster** — Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on the [Texas A&M ACES](https://hprc.tamu.edu/aces/) cluster. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in `SugarCluster/`.
 
-Will utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
+**Status:** Phase 5 (Presentation & Packaging). All 656 simulations ran successfully on ACES — 66 SLURM tasks across 20 nodes.
 
 ## Questions to Explore
+
 - How does different parameters maximize/minimize the spread of disease?
-- How does socio-economics factors play with "pandemics"?
+- How do socio-economics factors play with "pandemics"?
+
+**Finding:** Disease metabolism penalty dominates outcomes. Penalty=0 → 100% survival to t=1000. Penalty=2/3 → 89% extinction at t=1. All 8 ethical frameworks produce near-identical results — disease physics overwhelms ethical behavior. Delta Gini ≈ 0 (pandemic does not measurably change wealth inequality).
 
 ## Setup
 
 - Python 3.12+, managed with **uv**
 - Project code lives in `SugarCluster/` — `uv add` any dependencies
-- The sugarscape submodule is imported as a local package — add it to `SugarCluster/pyproject.toml` paths
+- Dependencies installed: `pandas`, `matplotlib`, `seaborn`, `tomli`
+- Run `uv sync` after cloning
 
 ## Project Structure
 
-- `SugarCluster/` — Main implementation (all new code)
-  - `main.py` — Entry point
-  - `pyproject.toml` — Python project config (dependencies, package metadata)
-  - `.python-version` — Python 3.12
-- `sugarscape/` — Read-only git submodule (upstream simulation engine)
-- `PLAN.md` — High-level project plan and timeline. Check off tasks as you complete them. Ask clarifying questions if any steps are unclear.
+```
+SugarCluster/                  # Main implementation (all new code)
+├── sweep.toml                 # Parameter sweep specification (TOML-driven)
+├── generate_configs.py        # Cartesian product config generator
+├── submit.slurm               # SLURM job array (hybrid: 10 sims/task)
+├── run_batch.py               # Per-batch runner with per-sim timing
+├── check_outputs.py           # Post-run validation & retry support
+├── setup_aces.sh              # ACES environment bootstrap
+│
+├── parse_slurm.py             # Parse sacct output → slurm_timing.csv
+├── aggregate.py               # 656 JSON logs + timing → run_summary.csv
+├── timing_analysis.py         # Throughput/parallelism metrics + cumulative curves
+├── analyze.py                 # Grouped statistics, penalty=0 stratification
+├── plots.py                   # 7 presentation figures
+│
+├── slides.md                  # 12-slide presentation deck (Markdown)
+├── speaking_notes.md          # Presenter script with timing
+├── README.md                  # Project documentation
+├── Makefile                   # Targets: configs, aggregate, timing, analyze, plots
+├── pyproject.toml             # Python project config
+├── .python-version            # Python 3.12
+│
+├── configs/                   # 656 generated .config JSON files
+├── data/                      # 656 simulation JSON log outputs
+├── timing/                    # 66 per-batch timing CSVs
+├── results/                   # All analysis outputs (CSVs)
+├── plots/                     # 7 presentation figures (PNG)
+│
+├── slurm_full.txt             # Raw sacct output from ACES
+├── jobs.csv                   # Job manifest (job_id → config → params)
+└── uv.lock                    # Locked dependency versions
+```
+
+## Script Reference
+
+| Script | Reads | Writes | Purpose |
+| :--- | :--- | :--- | :--- |
+| `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 656 minimal JSON configs |
+| `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | SLURM job array (runs on ACES) |
+| `run_batch.py` | config file | JSON log + timing CSV | Per-batch runner with wall-clock timing |
+| `check_outputs.py` | `jobs.csv` | log summary | Post-run validation |
+| `parse_slurm.py` | `slurm_full.txt` | `slurm_timing.csv` | Parse sacct output |
+| `aggregate.py` | `data/*.json`, `timing/*.csv`, `jobs.csv` | `run_summary.csv` | Extract per-run metrics + baseline deltas |
+| `timing_analysis.py` | `slurm_timing.csv`, `timing/*.csv` | `timing_summary.csv`, cumulative curves | Throughput, parallelism, node distribution |
+| `analyze.py` | `run_summary.csv` | `summary_stats.csv`, `framework_*.csv` | Grouped stats, penalty stratification |
+| `plots.py` | `run_summary.csv`, `slurm_timing.csv`, cumulative CSVs | `plots/*.png` | 7 presentation figures |
 
 ## Sugarscape Reference (read-only submodule)
 
@@ -33,14 +77,6 @@ Entry point: `sugarscape/sugarscape.py` — the `Sugarscape` class. Key files:
 - `ethics.py` — Decision model subclasses: Bentham, Asimov, Temperance (+ PECS variant)
 - `environment.py` — Grid, resource peaks, pollution
 - `config.json` — Full parameter reference (two-level JSON: `dataCollectionOptions` + `sugarscapeOptions`)
-
-### Running Sugarscape Locally (reference only)
-
-```bash
-cd sugarscape
-python sugarscape.py --conf config.json       # GUI mode
-# Set "headlessMode": true in config for batch runs
-```
 
 ### Config Structure
 
@@ -59,19 +95,24 @@ Ethical frameworks (`agentDecisionModels`):
 `none`, `altruist`, `bentham`, `egoist`, `negativeBentham`, `asimov`, `temperance`, `temperancePECS`
 Suffixes: `HalfLookahead`, `NoLookahead`, `Dynamic`
 
-### Data Collection Flow
-
-1. `make seeds` — generates random seed configs in `data/`
-2. `make data` — runs all seed configs (controlled by `numSeeds`, `numParallelSimJobs`)
-3. `make plots` — generates PDF plots from collected data
-4. `make test` — runs all `examples/*.json` at 200 timesteps (not pytest)
-
 ### Testing
 
 No pytest or test framework. Tests are integration-only: `cd sugarscape && make test` runs every example config headless for 200 timesteps. Add new test configs as JSON in `sugarscape/examples/`.
 
-### Logging
+## Lessons Learned
 
-- `logfile` — path for simulation output (JSON or CSV, set by `logfileFormat`)
-- `agentLogfile` — per-agent detailed logs
-- `experimentalGroup` — track specific agent subsets (e.g., `"disease"`, `"sick"`, `"female"`, decision model names)
+1. **CRLF line endings** — Windows files need `sed -i 's/\r$//'` on Linux clusters
+2. **Path separators** — `os.path.join` produces `\` on Windows, breaks on Linux; force forward-slash
+3. **SLURM SUBMIT_DIR** — Resolves to staging tmpdir, not project dir; use `PROJECT_DIR` env var instead
+4. **ACES QOS limits** — Job array max size requires hybrid batching (`SIMS_PER_JOB=10`)
+5. **Disease param range format** — Sugarscape validates `[min, max]` lists, not scalars
+6. **Penalty calibration** — `[0, 2, 5]` caused instant extinction; reduced to `[0, 2, 3]`
+
+## Deliverables
+
+- `slides.md` — 12-slide Markdown presentation with architecture, timing stats, and plots
+- `speaking_notes.md` — Full presenter script with timing per slide
+- `README.md` — Project documentation with setup and workflow
+- `Makefile` — Automation targets
+- `plots/*.png` — 7 presentation figures
+- `results/*.csv` — 10 analysis CSVs (run_summary, summary_stats, framework comparisons, timing)

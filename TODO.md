@@ -100,7 +100,8 @@
 
 ## Phase 5 — Presentation & Packaging (May 31, Evening / June 1 AM)
 
-- [ ] **5.1 Build 8-minute slide deck**
+- [x] **5.1 Build 8-minute slide deck** (`SugarCluster/slides.md` + `speaking_notes.md`)
+  12 slides with architecture diagrams, timing stats, 7 embedded plots, and speaker scripts.
   Sections:
   1. Project overview & research questions (1 min)
   2. Architecture and diagram: config gen → ACES SLURM → data pull → analysis (2 min)
@@ -115,11 +116,11 @@
     - Make it support more parameters.
     - Make it portable to other users and clusters.
 
-- [ ] **5.2 Write `SugarCluster/README.md`**
-  Install steps, `generate_configs.py` usage, ACES submission, plot regeneration.
+- [x] **5.2 Write `SugarCluster/README.md`**
+  Install steps, project structure, full workflow, `generate_configs.py` usage, ACES submission, plot regeneration, adding new parameters.
 
-- [ ] **5.3 Write root `Makefile`**
-  Targets: `make configs`, `make submit`, `make fetch`, `make analyze`, `make plots`, `make slides`.
+- [x] **5.3 Write `SugarCluster/Makefile`**
+  Targets: `configs`, `aggregate`, `timing`, `analyze`, `plots`, `all`, `clean`.
 
 - [ ] **5.4 Package `final.zip`**
   All source, configs, raw JSON logs (subset if >2GB), all plots, slide PDF, README.
