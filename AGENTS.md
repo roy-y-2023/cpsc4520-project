@@ -4,6 +4,8 @@
 
 Middleware to run the Sugarscape agent-based simulation at scale for disease spread experiments. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in the repo root.
 
+Will be utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
+
 ## Questions to Explore
 - How does different parameters maximize/minimize the spread of disease?
 - How does socio-economics factors play with "pandemics"?
