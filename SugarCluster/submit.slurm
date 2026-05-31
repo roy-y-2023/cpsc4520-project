@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=sugarscape-sweep
-#SBATCH --array=1-656%50
+#SBATCH --array=1-66%50
 #SBATCH --time=01:00:00
 #SBATCH --mem=4G
 #SBATCH --ntasks=1
@@ -9,25 +9,31 @@
 
 set -euo pipefail
 
-# Project root — override with PROJECT_DIR env var for ACES
-# Default: resolved relative to this script's location
+# --- Configuration (override via environment variables) ---
+# PROJECT_DIR: root containing SugarCluster/ and sugarscape/
+# SIMS_PER_JOB: how many simulations each array task runs (default 10)
+#
+# Usage:
+#   PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project \
+#       SIMS_PER_JOB=10 \
+#       sbatch --array=1-66%50 -A 155415875505 submit.slurm
+# ----------------------------------------------------------
+
 PROJECT_DIR="${PROJECT_DIR}"
+SIMS_PER_JOB="${SIMS_PER_JOB:-10}"
+
+# Auto-detect relative to script if PROJECT_DIR not set
 if [ -z "$PROJECT_DIR" ]; then
     PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
 fi
 
-CLUSTER_DIR="${PROJECT_DIR}/SugarCluster"
-SUGARSCAPE_DIR="${PROJECT_DIR}/sugarscape"
+# Compute the range of job IDs for this array task
+START_ID=$(( (SLURM_ARRAY_TASK_ID - 1) * SIMS_PER_JOB + 1 ))
+END_ID=$(( START_ID + SIMS_PER_JOB - 1 ))
 
-# Derive config path from the manifest
-# jobs.csv columns: job_id,run_type,framework,config_path,...
-CONFIG_PATH=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "${CLUSTER_DIR}/jobs.csv" | cut -d',' -f4)
+echo "[Task ${SLURM_ARRAY_TASK_ID}] Running sims ${START_ID}..${END_ID} (${SIMS_PER_JOB} per task)"
 
-if [ -z "$CONFIG_PATH" ] || [ ! -f "${CLUSTER_DIR}/${CONFIG_PATH}" ]; then
-    echo "ERROR: Config not found for array task ${SLURM_ARRAY_TASK_ID} -> ${CONFIG_PATH}" >&2
-    exit 1
-fi
-
-cd "${CLUSTER_DIR}"
-echo "[Task ${SLURM_ARRAY_TASK_ID}] Running ${CONFIG_PATH}"
-python "${SUGARSCAPE_DIR}/sugarscape.py" --conf "${CONFIG_PATH}"
+python "${PROJECT_DIR}/SugarCluster/run_batch.py" \
+    --project-dir "${PROJECT_DIR}" \
+    --start-id "${START_ID}" \
+    --end-id "${END_ID}"

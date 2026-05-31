@@ -145,6 +145,7 @@
   4. Challenges & lessons learned (1 min)
     - Decide which distributed runtime to use
     - Had issue with file path, ended up have to hardcode absolute path in files.
+    - Hitted ACES job array limit: had to bundle job submission.
   5. Future work (1 min)
     - Make it support more parameters.
     - Make it portable to other users and clusters.

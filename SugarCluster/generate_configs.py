@@ -53,11 +53,11 @@ def make_disease_config(
         "logfile": f"{name}.json",
         "startingDiseases": disease["startingDiseases"],
         "startingDiseasesPerAgent": disease["startingDiseasesPerAgent"],
-        "diseaseTransmissionChance": trans,
-        "diseaseTagStringLength": tag,
+        "diseaseTransmissionChance": [trans, trans],
+        "diseaseTagStringLength": [tag, tag],
         "agentImmuneSystemLength": imm,
-        "diseaseSugarMetabolismPenalty": pen,
-        "diseaseSpiceMetabolismPenalty": pen,
+        "diseaseSugarMetabolismPenalty": [pen, pen],
+        "diseaseSpiceMetabolismPenalty": [pen, pen],
     }
     filename = f"{name}.config"
     return cfg, filename
