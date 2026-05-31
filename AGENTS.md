@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Middleware to run the Sugarscape agent-based simulation at scale for disease spread experiments. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in the repo root.
+**SugarCluster** — Middleware to run the Sugarscape agent-based simulation at scale for disease spread experiments. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in `SugarCluster/`.
 
-Will be utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
+Will utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
 
 ## Questions to Explore
 - How does different parameters maximize/minimize the spread of disease?
@@ -12,11 +12,19 @@ Will be utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at sca
 
 ## Setup
 
-- Python 3.11+, managed with **uv**
-- Initialize: `uv init` then `uv add` any dependencies
-- The sugarscape submodule is imported as a local package — add it to `pyproject.toml` paths
+- Python 3.12+, managed with **uv**
+- Project code lives in `SugarCluster/` — `cd SugarCluster && uv init` then `uv add` any dependencies
+- The sugarscape submodule is imported as a local package — add it to `SugarCluster/pyproject.toml` paths
 
-## Sugarscape Reference (read-only)
+## Project Structure
+
+- `SugarCluster/` — Main implementation (all new code)
+  - `main.py` — Entry point
+  - `pyproject.toml` — Python project config (dependencies, package metadata)
+  - `.python-version` — Python 3.12
+- `sugarscape/` — Read-only git submodule (upstream simulation engine)
+
+## Sugarscape Reference (read-only submodule)
 
 Entry point: `sugarscape/sugarscape.py` — the `Sugarscape` class. Key files:
 - `agent.py` — Agent model, disease contraction (`catchDisease`), immune system (hamming distance)
