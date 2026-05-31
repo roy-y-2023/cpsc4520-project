@@ -118,9 +118,11 @@
 - [ ] **5.1 Build 8-minute slide deck**
   Sections:
   1. Project overview & research questions (1 min)
-  2. Architecture diagram: config gen → ACES SLURM → data pull → analysis (1 min)
-  3. Results showcase (plots) (4 min)
+  2. Architecture diagram: config gen → ACES SLURM → data pull → analysis (3 min)
+    - Audience have general understanding of distributed computing, but not ACES specifically
+  3. Results showcase (plots) (2 min)
   4. Challenges & lessons learned (1 min)
+    - Decide which distributed runtime to use
   5. Future work (1 min)
 
 - [ ] **5.2 Write `SugarCluster/README.md`**

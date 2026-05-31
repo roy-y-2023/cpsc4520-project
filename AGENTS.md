@@ -23,6 +23,7 @@ Will utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
   - `pyproject.toml` — Python project config (dependencies, package metadata)
   - `.python-version` — Python 3.12
 - `sugarscape/` — Read-only git submodule (upstream simulation engine)
+- `PLAN.md` — High-level project plan and timeline. Check off tasks as you complete them. Ask clarifying questions if any steps are unclear.
 
 ## Sugarscape Reference (read-only submodule)
 
