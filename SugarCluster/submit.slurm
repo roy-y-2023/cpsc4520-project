@@ -18,7 +18,7 @@ SUGARSCAPE_DIR="${SUGARSCAPE_DIR:-../sugarscape}"
 
 # Derive config path from the manifest
 # jobs.csv columns: job_id,run_type,framework,config_path,...
-CONFIG_PATH=$(sed -n "${SLURM_ARRAY_TASK_ID}p" jobs.csv | cut -d',' -f4)
+CONFIG_PATH=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" jobs.csv | cut -d',' -f4)
 
 if [ -z "$CONFIG_PATH" ] || [ ! -f "$CONFIG_PATH" ]; then
     echo "ERROR: Config not found for array task ${SLURM_ARRAY_TASK_ID} -> ${CONFIG_PATH}" >&2
