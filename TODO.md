@@ -52,18 +52,28 @@
 
 - [ ] **1.1 Transfer code to ACES**
   ```bash
-  rsync -avz --exclude '.venv' --exclude '__pycache__' \
-    SugarCluster/ sugarscape/ <user>@login.aces.hprc.tamu.edu:/scratch/user/<user>/SugarCluster/
+  # From repo root on local machine
+  rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' \
+    SugarCluster/ sugarscape/ login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/
   ```
 
-- [ ] **1.2 Environment setup on ACES**
-  Load Python 3.12 module, create venv, install dependencies (TOML parser if needed).
+- [ ] **1.2 Run environment setup on ACES**
+  ```bash
+  ssh login.aces.hprc.tamu.edu
+  cd ~/cpsc4520-project/SugarCluster
+  bash setup_aces.sh
+  ```
 
-- [ ] **1.3 Pilot job**
-  Submit 2-job test (`--array=1-2`) covering 1 baseline + 1 disease run. Confirm:
-  - Sugarscape loads minimal config correctly
-  - JSON log written to scratch
-  - Job completes within walltime
+- [ ] **1.3 Submit pilot job (2 jobs: 1 baseline + 1 disease)**
+  ```bash
+  # On ACES, in SugarCluster/
+  sbatch --array=1-2 submit.slurm
+  ```
+  Check results with:
+  ```bash
+  squeue -u $USER
+  python check_outputs.py --manifest jobs.csv --logdir .
+  ```
 
 ---
 
@@ -76,7 +86,13 @@
   Watch with `squeue -u $USER` and `sacct`.
 
 - [ ] **2.3 Validate outputs**
-  Run `SugarCluster/check_outputs.py` on ACES to verify every JSON log exists and reached timestep 1000. Generate a retry list for missing/failed jobs.
+  ```bash
+  python check_outputs.py --manifest jobs.csv --logdir .
+  ```
+  Re-run any failed jobs with:
+  ```bash
+  awk -F',' 'NR>1{print $2}' retry.csv | xargs -I {} sed -n "${SLURM_ARRAY_TASK_ID}p" {}
+  ```
 
 - [ ] **2.4 Re-submit failures (if any)**
   If >0 jobs fail, submit a secondary array only for missing indices.

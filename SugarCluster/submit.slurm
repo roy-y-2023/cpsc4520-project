@@ -3,6 +3,7 @@
 #SBATCH --array=1-656%50
 #SBATCH --time=01:00:00
 #SBATCH --mem=4G
+#SBATCH --ntasks=1
 #SBATCH --output=logs/slurm-%A_%a.out
 #SBATCH --error=logs/slurm-%A_%a.err
 
@@ -12,7 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Find sugarscape relative to this directory (assumes sibling repo checkout)
+# Sugarscape path — same directory level as SugarCluster
 SUGARSCAPE_DIR="${SUGARSCAPE_DIR:-../sugarscape}"
 
 # Derive config path from the manifest

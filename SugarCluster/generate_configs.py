@@ -102,7 +102,7 @@ def generate(sweep: dict, outdir: str, selected_models: list[str] | None = None,
                 "job_id": job_id,
                 "run_type": "baseline",
                 "framework": fw,
-                "config_path": path,
+                "config_path": path.replace(os.sep, "/"),
                 **{k: "" for k in param_names},
             })
             if limit and len(jobs) >= limit:
@@ -119,7 +119,7 @@ def generate(sweep: dict, outdir: str, selected_models: list[str] | None = None,
                 "job_id": job_id,
                 "run_type": "disease",
                 "framework": fw,
-                "config_path": path,
+                "config_path": path.replace(os.sep, "/"),
                 **dict(zip(param_names, params)),
             })
             if limit and len(jobs) >= limit:
