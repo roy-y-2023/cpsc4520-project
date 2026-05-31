@@ -13,7 +13,7 @@ Will utilize [ACES](https://hprc.tamu.edu/aces/) to run the simulation at scale.
 ## Setup
 
 - Python 3.12+, managed with **uv**
-- Project code lives in `SugarCluster/` — `cd SugarCluster && uv init` then `uv add` any dependencies
+- Project code lives in `SugarCluster/` — `uv add` any dependencies
 - The sugarscape submodule is imported as a local package — add it to `SugarCluster/pyproject.toml` paths
 
 ## Project Structure
