@@ -27,8 +27,8 @@ def compute_batch_durations(sim_df):
 def compute_cumulative_real(slurm_df):
     df = slurm_df.copy()
     df["end_time"] = pd.to_datetime(df["end_time"])
-    df = df.sort_values("end_time")
-    start = df["end_time"].min()
+    df = df.sort_values("end_time").reset_index(drop=True)  # reset so index = 0,1,2,...
+    start = pd.to_datetime(slurm_df["start_time"]).min()    # anchor t=0 to first job start
     df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
     df["cum_sims"] = (df.index + 1) * 10
     return df[["t_seconds", "cum_sims"]]
