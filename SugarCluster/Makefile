@@ -29,3 +29,11 @@ clean:
 	rm -f configs/*.config
 	rm -f jobs.csv
 	@echo "Cleaned generated files (data/ and timing/ preserved)"
+
+push_code:
+	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git'   cpsc4520-project/   login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/
+
+pull_data:
+	rsync -avz login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster/*.json   SugarCluster/data/
+	rsync -avz login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster/timing_*.csv   SugarCluster/timing/
+	rsync -avz login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster/slurm_full.txt   SugarCluster/
