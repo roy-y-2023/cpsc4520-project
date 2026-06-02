@@ -4,14 +4,14 @@
 
 **SugarCluster** — Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on the [Texas A&M ACES](https://hprc.tamu.edu/aces/) cluster. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in `SugarCluster/`.
 
-**Status:** Phase 5 (Presentation & Packaging). All 656 simulations ran successfully on ACES — 66 SLURM tasks across 20 nodes.
+**Status:** Phase 5 (Presentation & Packaging). All 1,520 simulations ran successfully on ACES — 51 tasks for the SLURM job array (hybrid: 30 sims/task) and 128 concurrent TAMULauncher tasks.
 
 ## Questions to Explore
 
 - How does different parameters maximize/minimize the spread of disease?
 - How do socio-economics factors play with "pandemics"?
 
-**Finding:** Disease metabolism penalty dominates outcomes. Penalty=0 → 100% survival to t=1000. Penalty=2/3 → 89% extinction at t=1. All 8 ethical frameworks produce near-identical results — disease physics overwhelms ethical behavior. Delta Gini ≈ 0 (pandemic does not measurably change wealth inequality).
+**Finding:** Disease metabolism penalty dominates outcomes. Penalty=0 → 100% survival to t=1000. Any non-zero penalty (0.1 to 3.0) → 89% extinction at t=1. All 8 ethical frameworks produce near-identical results — disease physics overwhelms ethical behavior. Delta Gini ≈ -0.01 (pandemic does not measurably change wealth inequality).
 
 ## Setup
 
@@ -35,7 +35,7 @@ SugarCluster/                  # Main implementation (all new code)
 ├── setup_aces.sh              # ACES environment bootstrap
 │
 ├── parse_slurm.py             # Parse sacct output → slurm_timing.csv
-├── aggregate.py               # 656 JSON logs + timing → run_summary.csv
+├── aggregate.py               # 1,520 JSON logs + timing → run_summary.csv
 ├── timing_analysis.py         # Throughput/parallelism metrics + cumulative curves
 ├── analyze.py                 # Grouped statistics, penalty=0 stratification
 ├── plots.py                   # 7 presentation figures
@@ -64,7 +64,7 @@ SugarCluster/                  # Main implementation (all new code)
 
 | Script | Reads | Writes | Purpose |
 | :--- | :--- | :--- | :--- |
-| `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 656 minimal JSON configs |
+| `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 1,520 minimal JSON configs |
 | `generate_commands.py` | `jobs.csv` | `commands.txt` | TAMULauncher: one command line per sim |
 | `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | **Legacy** SLURM job array |
 | `submit_tamulauncher.slurm` | `commands.txt` | `data/*.json`, `timing_sim_*.json` | **TAMULauncher** submit (no array limit) |
@@ -72,7 +72,7 @@ SugarCluster/                  # Main implementation (all new code)
 | `run_sim.py` | `jobs.csv`, config | JSON log + `timing_sim_<id>.json` | Single-sim runner (TAMULauncher worker) |
 | `check_outputs.py` | `jobs.csv` | log summary | Post-run validation |
 | `parse_slurm.py` | `slurm_full.txt` | `slurm_timing.csv` | Parse sacct output |
-| `aggregate.py` | `data/*.json`, `timing/`, `jobs.csv` | `run_summary.csv` | Extract per-run metrics + baseline deltas |
+| `aggregate.py` | `data/*.json`, `timing/`, `jobs.csv` | `run_summary.csv` | Extract 1,520 per-run metrics + baseline deltas |
 | `timing_analysis.py` | `slurm_timing.csv`, `timing/*.csv` | `timing_summary.csv`, cumulative curves | Throughput, parallelism, node distribution |
 | `analyze.py` | `run_summary.csv` | `summary_stats.csv`, `framework_*.csv` | Grouped stats, penalty stratification |
 | `plots.py` | `run_summary.csv`, `slurm_timing.csv`, cumulative CSVs | `plots/*.png` | 7 presentation figures |
@@ -114,7 +114,7 @@ No pytest or test framework. Tests are integration-only: `cd sugarscape && make 
 3. **SLURM SUBMIT_DIR** — Resolves to staging tmpdir, not project dir; use `PROJECT_DIR` env var instead
 4. **ACES QOS limits** — Job array max size requires hybrid batching; TAMULauncher avoids this entirely
 5. **Disease param range format** — Sugarscape validates `[min, max]` lists, not scalars
-6. **Penalty calibration** — `[0, 2, 5]` caused instant extinction; reduced to `[0, 2, 3]`
+6. **Penalty calibration** — `[0, 2, 5]` caused instant extinction; sweep expanded to `[0, 0.1, 0.25, 0.5, 1, 2, 3]` to capture intermediate dynamics
 7. **TAMULauncher commands.txt** — Must use LF line endings (not CRLF); `generate_commands.py` enforces this via `newline="\n"`
 
 ## Deliverables

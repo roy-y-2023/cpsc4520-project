@@ -4,26 +4,49 @@ Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on
 
 ## Overview
 
-SugarCluster automates everything from config generation to data analysis:
+SugarCluster automates the entire distributed lifecycle, from configuration sweep generation to parallel execution, post-run verification, and data analysis. It supports a **dual-backend execution model**, allowing you to choose between standard SLURM job arrays and high-performance TAMULauncher execution.
 
 ```
-sweep.toml  →  generate_configs.py  →  656 .config files
-                                         │
-              ┌──────────────────────────┘
-              ▼
-         submit.slurm  →  ACES (66 tasks × 10 sims, 20 nodes)
-              │
-              ▼
-         rsync data back  →  data/*.json + timing/*.csv
-              │
-              ▼
-         aggregate.py  →  analyze.py  →  plots.py  →  plots/*.png
+                              ┌──────────────┐
+                              │  sweep.toml  │
+                              └──────┬───────┘
+                                     ▼
+                          ┌──────────────────┐
+                          │ generate_configs │
+                          └──────┬────┬──────┘
+                                 │    │
+            ┌────────────────────┘    └────────────────────┐
+            ▼                                              ▼
+   1,520 .config files                              configs/ & jobs.csv
+            │                                              │
+            │ (SLURM Job Array)                            │ (TAMULauncher Backend)
+            ▼                                              ▼
+      submit.slurm                                generate_commands.py
+     (51 batch tasks)                                      │
+            │                                              ▼
+            │                                         commands.txt
+            │                                              │
+            │                                              ▼
+            │                                     submit_tamulauncher.slurm
+            │                                     (128 worker concurrency)
+            └────────────────────┬─────────────────────────┘
+                                 ▼
+                         ACES HPC Cluster
+                                 │
+                                 ▼
+                     rsync data & timing JSONs
+                                 │
+                                 ▼
+      aggregate.py  →  timing_analysis.py  →  analyze.py  →  plots.py
+                                 │
+                                 ▼
+                           plots/*.png
 ```
 
 ## Requirements
 
 - **Python 3.12+** with [uv](https://docs.astral.sh/uv/)
-- **Dependencies:** pandas, matplotlib, seaborn, tomli (see `pyproject.toml`)
+- **Dependencies:** `pandas`, `matplotlib`, `seaborn`, `tomli` (see `pyproject.toml`)
 
 ## Quick Start
 
@@ -32,153 +55,184 @@ sweep.toml  →  generate_configs.py  →  656 .config files
 cd SugarCluster
 uv sync
 
-# 1. Generate configs from sweep spec
+# 1. Generate configs from sweep specification
 uv run python generate_configs.py
 
-# 2. Transfer to ACES and submit (manual — see below)
-# 3. Pull results back (rsync / scp)
+# 2. Choose and execute an execution backend on ACES:
 
-# 4. Parse SLURM timing (requires sacct output in slurm_full.txt)
+# --- Option A: TAMULauncher (Recommended) ---
+# Generate commands.txt first (specifying the cluster project directory)
+PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
+  uv run python generate_commands.py
+# Submit the TAMULauncher script
+sbatch -A 155415875505 submit_tamulauncher.slurm
+
+# --- Option B: SLURM Job Array ---
+# Submit the hybrid job array script
+PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
+  sbatch -A 155415875505 submit.slurm
+
+# 3. Pull results back to your local machine
+make pull_data
+
+# 4. Parse SLURM timing data (requires sacct output)
 uv run python parse_slurm.py
 
-# 5. Aggregate all results
-uv run python aggregate.py
-uv run python timing_analysis.py
-uv run python analyze.py
-
-# 6. Generate plots
-uv run python plots.py
+# 5. Run the analytics & plotting pipeline
+make all
 ```
 
 ## Project Structure
 
 ```
 SugarCluster/
-├── sweep.toml              # Parameter sweep specification (TOML)
-├── generate_configs.py     # Cartesian product config generator
-├── submit.slurm            # SLURM job array (hybrid: 10 sims/task)
-├── run_batch.py            # Per-batch runner with timing
-├── setup_aces.sh           # ACES environment bootstrap
-├── check_outputs.py        # Post-run validation
+├── sweep.toml                 # Parameter sweep specification (TOML-driven)
+├── generate_configs.py        # Cartesian product config generator
+├── generate_commands.py       # TAMULauncher commands generator (commands.txt)
+├── submit.slurm               # SLURM job array script (hybrid: 30 sims/task)
+├── submit_tamulauncher.slurm  # TAMULauncher submission script (128 concurrent slots)
+├── run_batch.py               # Per-batch runner (SLURM job array task worker)
+├── run_sim.py                 # Single-simulation runner (TAMULauncher worker)
+├── setup_aces.sh              # ACES environment bootstrap script
+├── check_outputs.py           # Post-run validation and integrity checker
 │
-├── parse_slurm.py          # Parse sacct output → slurm_timing.csv
-├── aggregate.py            # JSON logs + timing → run_summary.csv
-├── timing_analysis.py      # Compute throughput/parallelism metrics
-├── analyze.py              # Grouped statistics, penalty stratification
-├── plots.py                # 7 presentation figures
+├── parse_slurm.py             # Parse sacct output → slurm_timing.csv
+├── aggregate.py               # 1,520 JSON logs + timing → run_summary.csv
+├── timing_analysis.py         # Compute throughput/parallelism metrics & curves
+├── analyze.py                 # Grouped statistics, penalty stratification
+├── plots.py                   # 8 presentation figures
 │
-├── slurm_full.txt          # Raw sacct output from ACES
-├── jobs.csv                # Job manifest (job_id → config → params)
+├── slurm_full.txt             # Raw sacct output from ACES SLURM array
+├── slurm_tamulauncher_full.txt# Raw sacct output from TAMULauncher job
+├── jobs.csv                   # Job manifest (job_id → config → params)
 │
-├── configs/                # 656 generated .config JSON files
-├── data/                   # 656 simulation JSON log outputs
-├── timing/                 # 66 per-batch timing CSVs
-├── results/                # All analysis outputs (CSVs)
-├── plots/                  # 7 presentation figures (PNG)
-│
-├── slides.md               # 12-slide presentation deck
-├── speaking_notes.md       # Presenter script with timing
-└── pyproject.toml          # Python project + dependencies
+├── configs/                   # 1,520 generated .config JSON files
+├── commands.txt               # 1,520 TAMULauncher command lines
+├── data/                      # 1,520 simulation JSON log outputs
+├── timing/                    # Per-batch CSVs (SLURM) & per-sim JSONs (TAMULauncher)
+├── results/                   # All analysis outputs (CSVs)
+└── plots/                     # 8 presentation figures (PNG)
 ```
 
-## Workflow
+## Detailed Workflow
 
 ### 1. Configure the Sweep
 
-Edit `sweep.toml` to define parameter knobs and their values:
+Edit `sweep.toml` to define the parameters and ethical frameworks to sweep:
 
 ```toml
 [parameters]
 diseaseTransmissionChance = [0.3, 0.6, 1.0]
 diseaseTagStringLength = [5, 13, 21]
 agentImmuneSystemLength = [10, 35, 60]
-diseaseSugarMetabolismPenalty = [0, 2, 3]
+diseaseSugarMetabolismPenalty = [0, 0.1, 0.25, 0.5, 1, 2, 3]
 
-models = ["none", "altruist", "bentham", "egoist",
-          "negativeBentham", "asimov", "temperance", "temperancePECS"]
+models = [
+  "none", "altruist", "bentham", "egoist",
+  "negativeBentham", "asimov", "temperance", "temperancePECS"
+]
 ```
 
-### 2. Generate Configs
+### 2. Generate Configs & Commands
 
+Run the generation script locally or on the login node:
 ```bash
 uv run python generate_configs.py
 ```
+This generates:
+- `configs/*.config` — 1,520 minimal JSON configs containing only overridden parameters.
+- `jobs.csv` — A central database mapping job IDs to parameter combinations.
 
-Outputs:
-- `configs/*.config` — minimal JSON configs (only specified keys differ from defaults)
-- `jobs.csv` — manifest mapping `job_id` to config path and parameters
+If using TAMULauncher, generate the command list:
+```bash
+PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
+  uv run python generate_commands.py
+```
+This creates `commands.txt` (using explicit Unix LF endings to prevent parser crashes on Linux).
 
 ### 3. Run on ACES
 
+Upload the code and configs using `make push_code` or `rsync`. On ACES:
+
+#### Option A: TAMULauncher Backend
+TAMULauncher runs all 1,520 tasks concurrently as single-core workers using a master-worker schema.
 ```bash
-# On ACES in the project directory:
+# Bootstrap the virtual environment
 bash setup_aces.sh
+
+# Submit the TAMULauncher job
+sbatch -A 155415875505 submit_tamulauncher.slurm
+```
+*Note: This requests 8 nodes with 16 tasks per node (128 slots) to process the sweep.*
+
+#### Option B: SLURM Job Array Backend
+SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **30 simulations per SLURM task**, resulting in 51 total tasks.
+```bash
+# Bootstrap the virtual environment
+bash setup_aces.sh
+
+# Submit the SLURM job array
 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
   sbatch -A 155415875505 submit.slurm
 ```
 
-`submit.slurm` uses hybrid batching: `SIMS_PER_JOB=10` → 66 tasks for 656 configs (avoids QOS array size limit).
+### 4. Pull Results & Metadata
 
-### 4. Pull Results
-
+After execution completes, download the logs:
 ```bash
-rsync -avz login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster/data/ \
-  SugarCluster/data/
-rsync -avz login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster/timing/ \
-  SugarCluster/timing/
+make pull_data
 ```
 
-Get SLURM timing metadata:
+To fetch job array metadata from `sacct`:
 ```bash
-# On ACES:
-sacct | grep <job_array_id> > slurm_full.txt
-# Transfer slurm_full.txt to SugarCluster/
+# Run on ACES login node (e.g. for Job Array id 1730737):
+sacct -j 1730737 --format=JobID,JobName,NodeList,Elapsed,State,AllocCPUS > slurm_full.txt
+
+# For TAMULauncher job id 1730944:
+sacct -j 1730944 --format=JobID,JobName,NodeList,Elapsed,State,AllocCPUS > slurm_tamulauncher_full.txt
 ```
+Copy these text files back to the project root directory.
 
-### 5. Analyze
+### 5. Run Post-Processing Pipeline
 
-```bash
-uv run python parse_slurm.py        # sacct → slurm_timing.csv
-uv run python aggregate.py          # JSON + timing → run_summary.csv
-uv run python timing_analysis.py    # Throughput, parallelism, cumulative curves
-uv run python analyze.py            # Grouped stats + penalty stratification
-```
+Run `make all` to run all parsing and statistics steps:
+1. `parse_slurm.py` — Parses `sacct` text logs into `results/slurm_timing.csv`.
+2. `aggregate.py` — Merges all 1,520 JSON logs and per-run durations into `results/run_summary.csv`.
+3. `timing_analysis.py` — Analyzes throughput, parallelism, and cumulative completion data.
+4. `analyze.py` — Compiles stats by parameter and ethics framework.
+5. `plots.py` — Generates 8 diagnostic and presentation plots.
 
-### 6. Generate Plots
+## Head-to-Head Comparison Results
 
-```bash
-uv run python plots.py
-```
+All 1,520 simulations ran successfully on ACES using both backends:
 
-Output: `plots/` directory with 7 PNG figures for the presentation.
+| Metric | SLURM Job Array Backend | TAMULauncher Backend |
+| :--- | :--- | :--- |
+| **Total Simulations** | 1,520 | 1,520 |
+| **Wall Clock Execution** | 5 min 16 sec (316s) | **60 seconds** |
+| **Parallelism Factor** | 20.9× | **70.0×** |
+| **Effective Throughput** | 17,316 sims/hour | **91,144 sims/hour** |
+| **Startup / Exec Overhead**| 6.0% (8.6s interpreter startup) | **~0.0%** (direct run) |
+| **Queue Concurrency Cap** | 40 jobs (requires hybrid batches) | None (single job container) |
+| **Cluster Portability** | Universal SLURM compatibility | TAMU ACES specific |
+| **Queue Wait Time** | **Near-instant** | ~30 mins (larger node demand) |
 
-## Key Results (Example Run)
-
-| Metric | Value |
-| :--- | :--- |
-| Total simulations | 656 |
-| SLURM tasks | 66 (10 sims/task hybrid) |
-| ACES nodes used | 20 |
-| Wall time | 2 min 23 sec |
-| Parallelism factor | **25.7×** (3681s serial → 143s wall) |
-| Throughput | 16,515 sims/wall-hour |
-| Batch overhead | 1.3% |
-| Penalty=0 survival | 100% |
-| Penalty=2/3 survival | 11% |
+### Key Scientific Findings
+- **Disease Metabolism Penalty Dominates:** If metabolism penalty is `0.0`, survival rate is 100% to $t=1000$ across all 8 frameworks. Any non-zero penalty (`0.1` to `3.0`) leads to **89% instant extinction** at $t=1$.
+- **Ethics vs Physics:** Since initial disease parameters are highly severe, ethical decision models show identical heatmaps and survival profiles. The physics of disease transmission and metabolic cost completely overwhelm ethical framework behaviors.
+- **Economic Inequality:** Wealth inequality slightly decreases under a pandemic (mean delta Gini $\approx -0.01$). This is due to flat metabolic penalties acting as a wealth compression force across the population.
 
 ## Adding a New Parameter
 
-1. Add the parameter to `sweep.toml` under `[parameters]`:
+1. **Add to `sweep.toml`** under `[parameters]`:
    ```toml
    myNewParam = [10, 20, 30]
    ```
-2. Add it to the disease config template in `generate_configs.py`:
+2. **Add to the config generator** in `generate_configs.py`:
    ```python
-   cfg[config_level]["myNewParam"] = [combo["myNewParam"], combo["myNewParam"]]
+   cfg[config_level]["myNewParam"] = combo["myNewParam"]
    ```
-3. For an environmental parameter (not disease-specific), add a new sweep group.
-
-The middleware is designed to make this a 2-line change.
+   *Note: For ranges, use `[combo["myNewParam"], combo["myNewParam"]]` to fit Sugarscape's expected format.*
 
 ## License
 
