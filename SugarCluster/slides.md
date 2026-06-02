@@ -37,19 +37,19 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ```
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ sweep.toml   │────▶│ generate_configs  │────▶│ 1,520 .config files     │
-│ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest     │
+│ sweep.toml   │────▶│ generate_configs │────▶│ 1,520 .config files   │
+│ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest    │
 └──────────────┘     └──────────────────┘     └───────────┬────────────┘
                                                           │
                                         ┌─────────────────┴─────────────────┐
                                         ▼                                   ▼
                                submit.slurm                  submit_tamulauncher.slurm
-                               (job array)                   (TAMULauncher)
+                                   (job array)                       (TAMULauncher)
                                         └─────────────────┬─────────────────┘
                                                           ▼
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ plots/*.png  │◀────│ aggregate.py     │◀────│ ACES HPC Cluster        │
-│ 8 figures    │     │ + analyze.py     │     │ 1,520 JSON results      │
+│ plots/*.png  │◀────│ aggregate.py     │◀────│ ACES HPC Cluster      │
+│ 8 figures    │     │ + analyze.py     │     │ 1,520 JSON results     │
 └──────────────┘     │ + plots.py       │     └────────────────────────┘
                      └──────────────────┘
 ```
@@ -69,11 +69,11 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Job Array: 1730737                                         │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐     ┌─────────┐      │
-│  │ Task 1  │ │ Task 2  │ │ Task 3  │ ... │ Task 51 │      │
-│  │ 30 sims │ │ 30 sims │ │ 30 sims │     │ 30 sims │      │
-│  │ ac022   │ │ ac040   │ │ ac069   │     │ ac017   │      │
-│  └─────────┘ └─────────┘ └─────────┘     └─────────┘      │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐     ┌─────────┐        │
+│  │ Task 1  │ │ Task 2  │ │ Task 3  │ ... │ Task 51 │        │
+│  │ 30 sims │ │ 30 sims │ │ 30 sims │     │ 30 sims │        │
+│  │ ac022   │ │ ac040   │ │ ac069   │     │ ac017   │        │
+│  └─────────┘ └─────────┘ └─────────┘     └─────────┘        │
 │                    11 ACES nodes                            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -97,14 +97,14 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 ## Approach 2: TAMULauncher
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  TAMULauncher (Job: 1730944)                                │
-│  commands.txt: 1 line per sim                               │
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  ...  ┌──────┐      │
-│  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │        │s1520 │      │
-│  └──────┘ └──────┘ └──────┘ └──────┘        └──────┘      │
-│          8 nodes × 16 tasks = 128 concurrent               │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  TAMULauncher (Job: 1730944)                         │
+│  commands.txt: 1 line per sim                        │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  ...  ┌──────┐  │
+│  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │       │s1520 │  │
+│  └──────┘ └──────┘ └──────┘ └──────┘       └──────┘  │
+│          8 nodes × 16 tasks = 128 concurrent         │
+└──────────────────────────────────────────────────────┘
 ```
 
 | Metric | Value |
@@ -130,12 +130,12 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 | **Parallelism** | 20.9× | **70×** |
 | **Job limit workaround** | Hybrid batching (complex) | None needed |
 | **Overhead** | 6% (batch startup) | ~0% |
-| **Queue wait** | Near-instant (small jobs) | **~30 min** (large resource ask) |
+| **Queue wait** | Near-instant (small jobs) | Near-instant (after reduced machine size) |
 | **Portability** | Any SLURM cluster | ACES-specific |
 | **Observability** | `sacct` per task | Per-sim timing JSON |
 
 **Takeaway:** TAMULauncher is **5.3× faster** in wall time and handles the array size limit
-transparently — but requesting 8 nodes × 16 CPUs means a longer queue wait on a busy cluster.
+transparently — but requesting 48 CPUs means a longer queue wait even during night time.
 
 ---
 
@@ -201,12 +201,13 @@ transparently — but requesting 8 nodes × 16 CPUs means a longer queue wait on
 | :--- | :--- |
 | **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims → then switched to TAMULauncher |
 | **ACES global concurrency cap** (40 jobs) | TAMULauncher bypasses this entirely |
+| **TAMULauncher queue wait** | Large resource ask (48 CPU per node) → ~2 hour queue time |
+| **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |
-| **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Disease params must be lists** `[0.3, 0.3]` | Sugarscape validation requires range format |
 | **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to [0, 0.1, 0.25, 0.5, 1, 2, 3] |
-| **TAMULauncher queue wait** | Large resource ask (8 nodes) → ~30 min queue time on busy ACES |
+
 
 ---
 
