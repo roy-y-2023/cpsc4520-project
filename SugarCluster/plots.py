@@ -106,12 +106,6 @@ def plot_cumulative_completion():
         ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
                 linewidth=2, color="#1a9641", label="TAMULauncher (per-sim timestamps)")
         any_real = True
-    if curves["theoretical"] is not None:
-        theo = curves["theoretical"]
-        ax.plot(theo["t_seconds"], theo["cum_sims"], drawstyle="steps-post",
-                linewidth=2, linestyle="--", color="#d7191c",
-                label="Theoretical (perfect parallelism)")
-        ax.axvline(theo["t_seconds"].max(), color="#d7191c", linestyle=":", alpha=0.4)
 
     all_max = []
     for key in ("slurm", "tamulauncher"):
@@ -121,12 +115,12 @@ def plot_cumulative_completion():
                        color="#2c7bb6" if key == "slurm" else "#1a9641",
                        linestyle=":", alpha=0.4)
 
-    cum_maxes = [c["cum_sims"].max() for c in curves.values() if c is not None]
+    cum_maxes = [curves[key]["cum_sims"].max() for key in ("slurm", "tamulauncher") if curves[key] is not None]
     ax.set_ylim(0, (max(cum_maxes) if cum_maxes else 1000) * 1.1)
     ax.set_xlabel("Wall-clock Time (seconds)")
     ax.set_ylabel("Cumulative Simulations Completed")
-    ax.set_title("Simulation Throughput: SLURM Array vs TAMULauncher vs Theoretical")
-    if any_real or curves["theoretical"] is not None:
+    ax.set_title("Simulation Throughput: SLURM Array vs TAMULauncher")
+    if any_real:
         ax.legend(loc="lower right")
     fig.tight_layout()
     fig.savefig(OUT_DIR / "cumulative_completion.png", dpi=150, bbox_inches="tight")

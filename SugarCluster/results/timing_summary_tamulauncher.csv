@@ -1,2 +1,2 @@
 mode,total_sims,total_slurm_tasks,num_nodes,sims_per_task,total_wall_seconds,total_wall_minutes,total_core_seconds,total_sim_seconds,avg_slurm_elapsed,min_slurm_elapsed,max_slurm_elapsed,avg_sim_duration,sims_per_wall_hour,avg_batch_overhead_pct,avg_batch_overhead_s,parallelism_factor,total_duration_hhmmss
-tamulauncher,1520,1,,,60.036828,1.0006138,4214.1,4214.1,,,,2.772434210526316,91144.05577856312,,,70.19191620183533,1:00
+tamulauncher,1520,1,,,111.0,1.85,4214.1,4214.1,,,,2.772434210526316,49297.29729729729,,,37.96486486486487,1:51

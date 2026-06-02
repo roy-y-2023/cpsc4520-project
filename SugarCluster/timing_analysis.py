@@ -62,6 +62,27 @@ def load_sim_timing_tamulauncher():
     return df
 
 
+def get_tamulauncher_job_elapsed():
+    """Parse the elapsed seconds of the COMPLETED TAMULauncher job from slurm_tamulauncher_full.txt."""
+    path = PROJECT / "slurm_tamulauncher_full.txt"
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if "COMPLETED" in line and "sugarscape-tamulaun" in line:
+                parts = line.split("COMPLETED", 1)[1].split()
+                if parts:
+                    elapsed_str = parts[0]
+                    t_parts = elapsed_str.split(":")
+                    if len(t_parts) == 3:
+                        h, m, s = t_parts
+                        return int(h) * 3600 + int(m) * 60 + int(s)
+                    elif len(t_parts) == 2:
+                        m, s = t_parts
+                        return int(m) * 60 + int(s)
+    return None
+
+
 def load_any_sim_timing():
     """Union of both per-sim timing sources — used by aggregate.py and plots.py."""
     chunks = []
@@ -109,7 +130,11 @@ def compute_cumulative_real_slurm(slurm_df):
     start = slurm_df["start_time"].min()
     df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
     df["cum_sims"] = (df.index + 1) * sims_per_job
-    return df[["t_seconds", "cum_sims"]]
+    
+    # Prepend t_seconds=0, cum_sims=0 to represent the origin / job startup
+    zero_row = pd.DataFrame([{"t_seconds": 0.0, "cum_sims": 0}])
+    df_result = pd.concat([zero_row, df[["t_seconds", "cum_sims"]]], ignore_index=True)
+    return df_result
 
 
 def compute_cumulative_theoretical_slurm(sim_df):
@@ -179,10 +204,23 @@ def compute_cumulative_real_tamulauncher(sim_df):
     """Cumulative sims complete vs wall time, from per-sim end_time timestamps."""
     df = sim_df.dropna(subset=["end_time"]).copy()
     df = df.sort_values("end_time").reset_index(drop=True)
-    start = sim_df["start_time"].dropna().min()
-    df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
+    
+    elapsed = get_tamulauncher_job_elapsed()
+    if elapsed is not None:
+        max_end = df["end_time"].max()
+        df["t_seconds"] = (df["end_time"] - max_end).dt.total_seconds() + elapsed
+        print(f"[timing_analysis] Aligned TAMULauncher timeline using job elapsed duration of {elapsed}s.")
+    else:
+        start = sim_df["start_time"].dropna().min()
+        df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
+        print(f"[timing_analysis] WARNING: slurm_tamulauncher_full.txt not found. Using first simulation start time.")
+        
     df["cum_sims"] = range(1, len(df) + 1)
-    return df[["t_seconds", "cum_sims"]]
+    
+    # Prepend t_seconds=0, cum_sims=0 to represent the origin / job startup
+    zero_row = pd.DataFrame([{"t_seconds": 0.0, "cum_sims": 0}])
+    df_result = pd.concat([zero_row, df[["t_seconds", "cum_sims"]]], ignore_index=True)
+    return df_result
 
 
 def compute_cumulative_theoretical_tamulauncher(sim_df):
@@ -199,7 +237,11 @@ def analyze_tamulauncher(sim_df):
     has_timestamps = (
         "start_time" in sim_df.columns and sim_df["start_time"].notna().any()
     )
-    if has_timestamps:
+    elapsed = get_tamulauncher_job_elapsed()
+    
+    if elapsed is not None:
+        total_wall = float(elapsed)
+    elif has_timestamps:
         first_start = sim_df["start_time"].min()
         last_end = sim_df["end_time"].dropna().max()
         total_wall = (last_end - first_start).total_seconds()
