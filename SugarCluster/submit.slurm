@@ -14,6 +14,7 @@ if command -v module &> /dev/null; then
     module load GCCcore/13.3.0 Python/3.12.3
 fi
 
+
 # --- Configuration (override via environment variables) ---
 # PROJECT_DIR: root containing SugarCluster/ and sugarscape/
 # SIMS_PER_JOB: how many simulations each array task runs (default 10)
@@ -41,9 +42,15 @@ fi
 START_ID=$(( (SLURM_ARRAY_TASK_ID - 1) * SIMS_PER_JOB + 1 ))
 END_ID=$(( START_ID + SIMS_PER_JOB - 1 ))
 
+# Activate venv if it exists, otherwise use module-loaded python3
+if [ -f "${PROJECT_DIR}/SugarCluster/.venv/bin/activate" ]; then
+    source "${PROJECT_DIR}/SugarCluster/.venv/bin/activate"
+fi
+PYTHON="$(command -v python3 || command -v python)"
+
 echo "[Task ${SLURM_ARRAY_TASK_ID}] Running sims ${START_ID}..${END_ID} (${SIMS_PER_JOB} per task)"
 
-"${PROJECT_DIR}/SugarCluster/.venv/bin/python" "${PROJECT_DIR}/SugarCluster/run_batch.py" \
+"${PYTHON}" "${PROJECT_DIR}/SugarCluster/run_batch.py" \
     --project-dir "${PROJECT_DIR}" \
     --start-id "${START_ID}" \
     --end-id "${END_ID}"

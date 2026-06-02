@@ -29,7 +29,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 ### Scale
 
 - **1,520 simulations** — every combination of 4 disease knobs across 8 ethical frameworks (with baselines)
-- **1,000 timesteps** each, **30 sims per SLURM task**, **51 parallel tasks**
+- **1,000 timesteps** each — run twice: once with SLURM job arrays, once with TAMULauncher
 
 ---
 
@@ -41,26 +41,30 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 │ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest     │
 └──────────────┘     └──────────────────┘     └───────────┬────────────┘
                                                           │
+                                        ┌─────────────────┴─────────────────┐
+                                        ▼                                   ▼
+                               submit.slurm                  submit_tamulauncher.slurm
+                               (job array)                   (TAMULauncher)
+                                        └─────────────────┬─────────────────┘
                                                           ▼
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
 │ plots/*.png  │◀────│ aggregate.py     │◀────│ ACES HPC Cluster        │
-│ 8 figures    │     │ + analyze.py     │     │ 11 nodes · 51 tasks     │
-└──────────────┘     │ + plots.py       │     │ 5.3 min wall time       │
-                     └──────────────────┘     └────────────────────────┘
+│ 8 figures    │     │ + analyze.py     │     │ 1,520 JSON results      │
+└──────────────┘     │ + plots.py       │     └────────────────────────┘
+                     └──────────────────┘
 ```
 
 ### Data Flow
 
 1. **`sweep.toml`** → TOML declares 4 parameter knobs (3 with 3 values, 1 with 7 values) + 8 ethical frameworks
 2. **`generate_configs.py`** → emits 1,520 minimal JSON configs + `jobs.csv` manifest
-3. **`submit.slurm`** → SLURM job array, 51 tasks × 30 sims each (hybrid batching)
-4. **`run_batch.py`** → per-sim timing, per-batch CSV logs
-5. **`aggregate.py`** → parses 1,520 JSON results + timing → `run_summary.csv`
-6. **`plots.py`** → 8 figures for presentation
+3. **Two submission strategies** — compared head-to-head (see next slides)
+4. **`aggregate.py`** → parses 1,520 JSON results + timing → `run_summary.csv`
+5. **`plots.py`** → 8 figures for presentation
 
 ---
 
-## Distributed Execution on ACES
+## Approach 1: SLURM Job Array
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -85,16 +89,63 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 | **Batch overhead** | **6.0%** (8.6s Python startup + config loading) |
 | **Throughput** | **17,316 sims/wall-hour** |
 
+**Bottleneck:** ACES QOS limits — max array size forced hybrid batching (30 sims/task).
+Global concurrency cap of 40 running jobs limits true parallelism.
+
+---
+
+## Approach 2: TAMULauncher
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  TAMULauncher (Job: 1730944)                                │
+│  commands.txt: 1 line per sim                               │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  ...  ┌──────┐      │
+│  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │        │s1520 │      │
+│  └──────┘ └──────┘ └──────┘ └──────┘        └──────┘      │
+│          8 nodes × 16 tasks = 128 concurrent               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| Metric | Value |
+| :--- | :--- |
+| **Total simulations** | 1,520 |
+| **Concurrency** | 128 (8 nodes × 16/node) |
+| **Total wall time** | **60 seconds** |
+| **Serial equivalent** | 4,214 seconds (70 min) |
+| **Parallelism factor** | **70×** |
+| **Overhead** | ~0% (no batching, no Python startup cost per batch) |
+| **Throughput** | **91,144 sims/wall-hour** |
+
+**No job array limit** — TAMULauncher dispatches all 1,520 as individual tasks automatically.
+
+---
+
+## SLURM vs TAMULauncher: Head-to-Head
+
+| | SLURM Job Array | TAMULauncher |
+| :--- | :--- | :--- |
+| **Wall time** | 5 min 16 sec | **60 sec** |
+| **Throughput** | 17,316 sims/hr | **91,144 sims/hr** |
+| **Parallelism** | 20.9× | **70×** |
+| **Job limit workaround** | Hybrid batching (complex) | None needed |
+| **Overhead** | 6% (batch startup) | ~0% |
+| **Queue wait** | Near-instant (small jobs) | **~30 min** (large resource ask) |
+| **Portability** | Any SLURM cluster | ACES-specific |
+| **Observability** | `sacct` per task | Per-sim timing JSON |
+
+**Takeaway:** TAMULauncher is **5.3× faster** in wall time and handles the array size limit
+transparently — but requesting 8 nodes × 16 CPUs means a longer queue wait on a busy cluster.
+
 ---
 
 ## Results: Distributed Systems
 
 ![cumulative](plots/cumulative_completion.png)
 
-**Real (blue)** tracks actual SLURM task completions from `sacct`.
-**Theoretical (red)** assumes perfect parallelism — each batch completes when its 10 sims finish.
-
-The gap shows ACES scheduling ("all tasks start nearly simultaneously, minimal queuing delay").
+**TAMULauncher (green)** — 1,520 individual sims, per-sim end timestamps. Finishes at **60 sec**.
+**SLURM Job Array (blue)** — 51 batch tasks via `sacct`. Staircase reflects 30-sim batches. Finishes at **316 sec**.
+**Theoretical (red dashed)** — perfect parallelism baseline from per-sim durations.
 
 ---
 
@@ -144,29 +195,18 @@ The gap shows ACES scheduling ("all tasks start nearly simultaneously, minimal q
 
 ---
 
-## Challenges: Why SLURM?
-
-| Option | Trade-off |
-| :--- | :--- |
-| **SLURM job arrays** ✓ | Built-in on ACES, just write a script |
-| Drona / TAMULauncher | ACES-specific workflow engine, good for DAGs but less portable |
-| MPI (`mpirun`) | Overkill for independent sims — no communication needed |
-| CCTools / Makeflow | Excellent for reproducible workflows, but requires custom install on ACES |
-
-**Chose SLURM for simplicity** — our sims are embarrassingly parallel (no data dependencies).
-
----
-
 ## Challenges: Engineering Lessons
 
 | Problem | Fix |
 | :--- | :--- |
-| **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims each |
+| **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims → then switched to TAMULauncher |
+| **ACES global concurrency cap** (40 jobs) | TAMULauncher bypasses this entirely |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
-| **CRLF line endings** | `sed -i 's/\r$//'` on ACES |
+| **CRLF line endings** | `commands.txt` written with explicit LF newlines |
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
-| **Disease params must be lists** `[0.3, 0.3]` not scalars | Sugarscape validation requires range format |
-| **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to [0, 0.1, 0.25, 0.5, 1, 2, 3] to study intermediate penalties |
+| **Disease params must be lists** `[0.3, 0.3]` | Sugarscape validation requires range format |
+| **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to [0, 0.1, 0.25, 0.5, 1, 2, 3] |
+| **TAMULauncher queue wait** | Large resource ask (8 nodes) → ~30 min queue time on busy ACES |
 
 ---
 
@@ -178,19 +218,22 @@ The gap shows ACES scheduling ("all tasks start nearly simultaneously, minimal q
 sweep.toml          →    generate_configs.py    →    1,520 configs
 (declarative params)     (generic cartesian       (minimal JSON,
                          product engine)           Sugarscape fills defaults)
+
+                    →    generate_commands.py   →    commands.txt
+                         (TAMULauncher mode)         (1 line per sim)
 ```
 
 - **No hard-coded parameter values** in Python — everything lives in `sweep.toml`
 - **Adding a new knob** = 1 line in TOML + 1 line in config template
-- **Running on a different cluster** = swap `submit.slurm` for PBS/Moab/LSF
+- **Swap execution engine** = switch `submit.slurm` ↔ `submit_tamulauncher.slurm`
 
 ---
 
 ## Future Work
 
-1. **Port to Makeflow / CCTools** — formal DAG workflow with provenance tracking
+1. **Reduce TAMULauncher queue wait** — request fewer nodes, more tasks/node (e.g. 2 nodes × 64/node)
 2. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
-3. **Multiple seeds** — 30+ seeds per config for statistical significance
+3. **Multiple seeds** — 30+ seeds per config for statistical significance; at 91K sims/hr this is now tractable
 4. **Interactive dashboard** — real-time monitoring while jobs run on ACES
 5. **Containerized deployment** — Singularity/Docker for zero-install cluster portability
 
@@ -198,12 +241,12 @@ sweep.toml          →    generate_configs.py    →    1,520 configs
 
 ## Thank You
 
-**SugarCluster** — TOML → configs → SLURM → data → plots
+**SugarCluster** — TOML → configs → SLURM/TAMULauncher → data → plots
 
-1,520 simulations. 11 nodes. 5.3 minutes.
+1,520 simulations. Two execution engines. SLURM: 5.3 min. TAMULauncher: 60 sec.
 
 **Questions?**
 
 ---
 
-*Repository: github.com/your/cpsc4520-project · ACES job: 1730737*
+*Repository: github.com/your/cpsc4520-project · SLURM job: 1730737 · TAMULauncher job: 1730944*

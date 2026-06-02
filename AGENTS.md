@@ -26,8 +26,11 @@
 SugarCluster/                  # Main implementation (all new code)
 ├── sweep.toml                 # Parameter sweep specification (TOML-driven)
 ├── generate_configs.py        # Cartesian product config generator
-├── submit.slurm               # SLURM job array (hybrid: 10 sims/task)
-├── run_batch.py               # Per-batch runner with per-sim timing
+├── generate_commands.py       # TAMULauncher: one command per sim → commands.txt
+├── submit.slurm               # SLURM job array (legacy: hybrid 10 sims/task)
+├── submit_tamulauncher.slurm  # TAMULauncher submit (no job array limit)
+├── run_batch.py               # Per-batch runner with per-sim timing (SLURM array)
+├── run_sim.py                 # Single-sim runner with timing JSON (TAMULauncher)
 ├── check_outputs.py           # Post-run validation & retry support
 ├── setup_aces.sh              # ACES environment bootstrap
 │
@@ -40,13 +43,15 @@ SugarCluster/                  # Main implementation (all new code)
 ├── slides.md                  # 12-slide presentation deck (Markdown)
 ├── speaking_notes.md          # Presenter script with timing
 ├── README.md                  # Project documentation
-├── Makefile                   # Targets: configs, aggregate, timing, analyze, plots
+├── Makefile                   # Targets: configs, commands, aggregate, timing, analyze, plots
 ├── pyproject.toml             # Python project config
 ├── .python-version            # Python 3.12
 │
 ├── configs/                   # 656 generated .config JSON files
+├── commands.txt               # TAMULauncher commands file (one line per sim)
 ├── data/                      # 656 simulation JSON log outputs
-├── timing/                    # 66 per-batch timing CSVs
+├── timing/                    # Per-batch CSVs (SLURM) and downloaded per-sim JSONs (TAMULauncher)
+│   └── timing_sim_*.json      # timing_sim_<job_id>.json — written in root on cluster, pulled here
 ├── results/                   # All analysis outputs (CSVs)
 ├── plots/                     # 7 presentation figures (PNG)
 │
@@ -60,11 +65,14 @@ SugarCluster/                  # Main implementation (all new code)
 | Script | Reads | Writes | Purpose |
 | :--- | :--- | :--- | :--- |
 | `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 656 minimal JSON configs |
-| `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | SLURM job array (runs on ACES) |
-| `run_batch.py` | config file | JSON log + timing CSV | Per-batch runner with wall-clock timing |
+| `generate_commands.py` | `jobs.csv` | `commands.txt` | TAMULauncher: one command line per sim |
+| `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | **Legacy** SLURM job array |
+| `submit_tamulauncher.slurm` | `commands.txt` | `data/*.json`, `timing_sim_*.json` | **TAMULauncher** submit (no array limit) |
+| `run_batch.py` | config file | JSON log + timing CSV | Per-batch runner (SLURM job array) |
+| `run_sim.py` | `jobs.csv`, config | JSON log + `timing_sim_<id>.json` | Single-sim runner (TAMULauncher worker) |
 | `check_outputs.py` | `jobs.csv` | log summary | Post-run validation |
 | `parse_slurm.py` | `slurm_full.txt` | `slurm_timing.csv` | Parse sacct output |
-| `aggregate.py` | `data/*.json`, `timing/*.csv`, `jobs.csv` | `run_summary.csv` | Extract per-run metrics + baseline deltas |
+| `aggregate.py` | `data/*.json`, `timing/`, `jobs.csv` | `run_summary.csv` | Extract per-run metrics + baseline deltas |
 | `timing_analysis.py` | `slurm_timing.csv`, `timing/*.csv` | `timing_summary.csv`, cumulative curves | Throughput, parallelism, node distribution |
 | `analyze.py` | `run_summary.csv` | `summary_stats.csv`, `framework_*.csv` | Grouped stats, penalty stratification |
 | `plots.py` | `run_summary.csv`, `slurm_timing.csv`, cumulative CSVs | `plots/*.png` | 7 presentation figures |
@@ -104,9 +112,10 @@ No pytest or test framework. Tests are integration-only: `cd sugarscape && make 
 1. **CRLF line endings** — Windows files need `sed -i 's/\r$//'` on Linux clusters
 2. **Path separators** — `os.path.join` produces `\` on Windows, breaks on Linux; force forward-slash
 3. **SLURM SUBMIT_DIR** — Resolves to staging tmpdir, not project dir; use `PROJECT_DIR` env var instead
-4. **ACES QOS limits** — Job array max size requires hybrid batching (`SIMS_PER_JOB=10`)
+4. **ACES QOS limits** — Job array max size requires hybrid batching; TAMULauncher avoids this entirely
 5. **Disease param range format** — Sugarscape validates `[min, max]` lists, not scalars
 6. **Penalty calibration** — `[0, 2, 5]` caused instant extinction; reduced to `[0, 2, 3]`
+7. **TAMULauncher commands.txt** — Must use LF line endings (not CRLF); `generate_commands.py` enforces this via `newline="\n"`
 
 ## Deliverables
 

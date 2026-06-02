@@ -1,0 +1,1 @@
+{"job_id": 969, "run_type": "disease", "framework": "asimov", "diseaseTransmissionChance": "0.3", "diseaseTagStringLength": "5", "agentImmuneSystemLength": "60", "diseaseSugarMetabolismPenalty": "0.5", "start_time": "2026-06-02T03:41:45.770738+00:00", "end_time": "2026-06-02T03:41:48.364023+00:00", "duration_seconds": 2.6, "peak_memory_mb": 26.62, "status": "OK"}

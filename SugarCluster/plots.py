@@ -26,17 +26,30 @@ def load():
 
 
 def load_slurm():
-    return pd.read_csv(RESULTS / "slurm_timing.csv")
+    p = RESULTS / "slurm_timing.csv"
+    return pd.read_csv(p) if p.exists() else pd.DataFrame()
 
 
 def load_cumulative():
-    real = pd.read_csv(RESULTS / "cumulative_real.csv")
-    theo = pd.read_csv(RESULTS / "cumulative_theoretical.csv")
-    return real, theo
+    """Load cumulative completion curves for all available modes.
+
+    Returns a dict with keys 'slurm', 'tamulauncher', 'theoretical',
+    each being a DataFrame or None.
+    """
+    def _try(name):
+        p = RESULTS / name
+        return pd.read_csv(p) if p.exists() else None
+
+    return {
+        "slurm":         _try("cumulative_real_slurm.csv"),
+        "tamulauncher":  _try("cumulative_real_tamulauncher.csv"),
+        "theoretical":   _try("cumulative_theoretical.csv"),
+    }
 
 
 def load_node_dist():
-    return pd.read_csv(RESULTS / "node_distribution.csv")
+    p = RESULTS / "node_distribution.csv"
+    return pd.read_csv(p) if p.exists() else pd.DataFrame()
 
 
 def get_sims_per_job():
@@ -51,35 +64,83 @@ def get_sims_per_job():
     return 30
 
 
-# ─── PLOT 1: Cumulative Completion (Real vs Theoretical) ────────
+def load_sim_timing():
+    """Union of per-sim timing from both SLURM (timing_*.csv) and TAMULauncher (timing_sim_*.json)."""
+    import json
+    chunks = []
+    legacy_files = sorted((PROJECT / "timing").glob("timing_*.csv"))
+    if legacy_files:
+        chunks.append(pd.concat([pd.read_csv(f) for f in legacy_files], ignore_index=True))
+    sim_jsons = sorted((PROJECT / "timing").glob("timing_sim_*.json"))
+    if sim_jsons:
+        records = []
+        for p in sim_jsons:
+            try:
+                records.append(json.loads(p.read_text()))
+            except Exception:
+                pass
+        if records:
+            chunks.append(pd.DataFrame(records))
+    if not chunks:
+        return pd.DataFrame()
+    combined = pd.concat(chunks, ignore_index=True)
+    if "job_id" in combined.columns:
+        combined = combined.drop_duplicates(subset=["job_id"], keep="first")
+    return combined
+
+
+# ─── PLOT 1: Cumulative Completion (Real vs Theoretical) ────────────────────────
 
 def plot_cumulative_completion():
-    real, theo = load_cumulative()
+    curves = load_cumulative()
     fig, ax = plt.subplots(figsize=(9, 5))
-    ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
-            linewidth=2, color="#2c7bb6", label="Real (SLURM sacct)")
-    ax.plot(theo["t_seconds"], theo["cum_sims"], drawstyle="steps-post",
-            linewidth=2, linestyle="--", color="#d7191c", label="Theoretical (perfect parallelism)")
-    ax.axvline(theo["t_seconds"].max(), color="#d7191c", linestyle=":", alpha=0.4)
-    ax.axvline(real["t_seconds"].max(), color="#2c7bb6", linestyle=":", alpha=0.4)
+
+    any_real = False
+    if curves["slurm"] is not None:
+        real = curves["slurm"]
+        ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
+                linewidth=2, color="#2c7bb6", label="SLURM Job Array (sacct)")
+        any_real = True
+    if curves["tamulauncher"] is not None:
+        real = curves["tamulauncher"]
+        ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
+                linewidth=2, color="#1a9641", label="TAMULauncher (per-sim timestamps)")
+        any_real = True
+    if curves["theoretical"] is not None:
+        theo = curves["theoretical"]
+        ax.plot(theo["t_seconds"], theo["cum_sims"], drawstyle="steps-post",
+                linewidth=2, linestyle="--", color="#d7191c",
+                label="Theoretical (perfect parallelism)")
+        ax.axvline(theo["t_seconds"].max(), color="#d7191c", linestyle=":", alpha=0.4)
+
+    all_max = []
+    for key in ("slurm", "tamulauncher"):
+        if curves[key] is not None:
+            all_max.append(curves[key]["t_seconds"].max())
+            ax.axvline(curves[key]["t_seconds"].max(),
+                       color="#2c7bb6" if key == "slurm" else "#1a9641",
+                       linestyle=":", alpha=0.4)
+
+    cum_maxes = [c["cum_sims"].max() for c in curves.values() if c is not None]
+    ax.set_ylim(0, (max(cum_maxes) if cum_maxes else 1000) * 1.1)
     ax.set_xlabel("Wall-clock Time (seconds)")
     ax.set_ylabel("Cumulative Simulations Completed")
-    ax.set_title("Simulation Throughput: Real vs Theoretical")
-    ax.legend(loc="lower right")
-    
-    max_sims = max(real["cum_sims"].max(), theo["cum_sims"].max()) if not real.empty else 1600
-    ax.set_ylim(0, max_sims * 1.1)
-    
+    ax.set_title("Simulation Throughput: SLURM Array vs TAMULauncher vs Theoretical")
+    if any_real or curves["theoretical"] is not None:
+        ax.legend(loc="lower right")
     fig.tight_layout()
     fig.savefig(OUT_DIR / "cumulative_completion.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     print("  saved cumulative_completion.png")
 
 
-# ─── PLOT 2: SLURM Task Duration Histogram ─────────────────────
+# ─── PLOT 2: SLURM Task Duration Histogram ───────────────────────────────
 
 def plot_slurm_task_duration():
     slurm = load_slurm()
+    if slurm.empty:
+        print("  skipping slurm_task_duration.png (no slurm_timing.csv)")
+        return
     sims_per_job = get_sims_per_job()
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(slurm["elapsed_seconds"], bins=12, color="#2c7bb6", edgecolor="white")
@@ -95,12 +156,15 @@ def plot_slurm_task_duration():
     print("  saved slurm_task_duration.png")
 
 
-# ─── PLOT 3: Node Distribution ─────────────────────────────────
+# ─── PLOT 3: Node Distribution ──────────────────────────────────────────
 
 def plot_node_distribution():
     nd = load_node_dist()
+    if nd.empty:
+        print("  skipping node_distribution.png (no node_distribution.csv)")
+        return
     slurm = load_slurm()
-    num_nodes = slurm["node"].nunique() if not slurm.empty else 20
+    num_nodes = slurm["node"].nunique() if not slurm.empty else nd["num_nodes"].sum()
     fig, ax = plt.subplots(figsize=(7, 4))
     bars = ax.bar(nd["tasks_per_node"].astype(str), nd["num_nodes"],
                   color="#2c7bb6", edgecolor="white")
@@ -116,13 +180,13 @@ def plot_node_distribution():
     print("  saved node_distribution.png")
 
 
-# ─── PLOT 4: Per-Sim Timing by Penalty ─────────────────────────
+# ─── PLOT 4: Per-Sim Timing by Penalty ─────────────────────────────────
 
 def plot_timing_by_penalty():
-    sim_timing = pd.concat(
-        [pd.read_csv(f) for f in sorted((PROJECT / "timing").glob("timing_*.csv"))],
-        ignore_index=True
-    )
+    sim_timing = load_sim_timing()
+    if sim_timing.empty:
+        print("  skipping timing_by_penalty.png (no per-sim timing data)")
+        return
     merged = pd.read_csv(RESULTS / "run_summary.csv")
     sim_timing = sim_timing.merge(
         merged[["job_id", "penalty", "survived"]], on="job_id", how="left"
@@ -220,15 +284,12 @@ def plot_gini_penalty0():
     print("  saved gini_penalty0.png")
 
 
-# ─── PLOT 8: Peak Memory Usage by Penalty ───────────────────────
+# ─── PLOT 8: Peak Memory Usage by Penalty ──────────────────────────────────
 
 def plot_memory_by_penalty():
-    sim_timing = pd.concat(
-        [pd.read_csv(f) for f in sorted((PROJECT / "timing").glob("timing_*.csv"))],
-        ignore_index=True
-    )
-    if "peak_memory_mb" not in sim_timing.columns:
-        print("  skipping memory plot (no peak_memory_mb column)")
+    sim_timing = load_sim_timing()
+    if sim_timing.empty or "peak_memory_mb" not in sim_timing.columns:
+        print("  skipping memory plot (no peak_memory_mb data)")
         return
 
     merged = pd.read_csv(RESULTS / "run_summary.csv")
@@ -236,8 +297,7 @@ def plot_memory_by_penalty():
         merged[["job_id", "penalty"]], on="job_id", how="left"
     )
     sim_timing["penalty"] = sim_timing["penalty"].fillna(-1).astype(float)
-    unique_penalties = sorted(sim_timing["penalty"].unique())
-    
+
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.boxplot(data=sim_timing, x="penalty", y="peak_memory_mb",
                 hue="penalty", palette="Spectral_r", legend=False, ax=ax)

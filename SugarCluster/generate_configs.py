@@ -28,7 +28,7 @@ def make_baseline_config(sim: dict, framework: str, outdir: str) -> tuple[dict, 
         "seed": sim["seed"],
         "headlessMode": sim["headless_mode"],
         "logfileFormat": sim["logfile_format"],
-        "logfile": f"{framework}_baseline.json",
+        "logfile": f"sim_{framework}_baseline.json",
     }
     filename = f"{framework}_baseline.config"
     return cfg, filename
@@ -50,7 +50,7 @@ def make_disease_config(
         "seed": sim["seed"],
         "headlessMode": sim["headless_mode"],
         "logfileFormat": sim["logfile_format"],
-        "logfile": f"{name}.json",
+        "logfile": f"sim_{name}.json",
         "startingDiseases": disease["startingDiseases"],
         "startingDiseasesPerAgent": disease["startingDiseasesPerAgent"],
         "diseaseTransmissionChance": [trans, trans],

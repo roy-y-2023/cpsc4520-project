@@ -18,9 +18,39 @@ def load_jobs():
 
 
 def load_timing():
-    files = sorted(TIMING.glob("timing_*.csv"))
-    chunks = [pd.read_csv(f) for f in files]
-    return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
+    """Load per-sim timing from both sources and return a unified DataFrame.
+
+    Sources (union of whichever exist):
+      - timing/timing_*.csv  — legacy batch CSVs written by run_batch.py (SLURM job array)
+      - timing_sim_*.json   — per-sim JSON files written by run_sim.py (TAMULauncher)
+    """
+    chunks = []
+
+    # Legacy: batch CSV files (submit.slurm + run_batch.py)
+    for f in sorted(TIMING.glob("timing_*.csv")):
+        chunks.append(pd.read_csv(f))
+
+    # TAMULauncher: per-sim JSON files (submit_tamulauncher.slurm + run_sim.py) in local timing directory
+    sim_jsons = sorted(TIMING.glob("timing_sim_*.json"))
+    if sim_jsons:
+        records = []
+        for p in sim_jsons:
+            try:
+                with open(p) as f:
+                    records.append(json.load(f))
+            except Exception:
+                pass
+        if records:
+            chunks.append(pd.DataFrame(records))
+
+    if not chunks:
+        return pd.DataFrame()
+
+    combined = pd.concat(chunks, ignore_index=True)
+    # De-duplicate by job_id, keeping the first occurrence
+    if "job_id" in combined.columns:
+        combined = combined.drop_duplicates(subset=["job_id"], keep="first")
+    return combined
 
 
 def summarize_json(path):
@@ -105,8 +135,8 @@ def main():
     stem_to_meta = jobs.set_index("config_stem").to_dict(orient="index")
 
     rows = []
-    for json_path in sorted(DATA.glob("*.json")):
-        stem = json_path.stem
+    for json_path in sorted(DATA.glob("sim_*.json")):
+        stem = json_path.stem.removeprefix("sim_")  # configs are keyed without the sim_ prefix
         meta = stem_to_meta.get(stem)
         if meta is None:
             continue
