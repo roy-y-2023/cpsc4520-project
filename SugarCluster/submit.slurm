@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=sugarscape-sweep
-#SBATCH --array=1-66%50
+#SBATCH --array=1-51%50
 #SBATCH --time=01:00:00
 #SBATCH --mem=4G
 #SBATCH --ntasks=1
@@ -8,6 +8,11 @@
 #SBATCH --error=logs/slurm-%A_%a.err
 
 set -euo pipefail
+
+# Ensure Python 3.12+ is available on compute nodes
+if command -v module &> /dev/null; then
+    module load GCCcore/13.3.0 Python/3.12.3
+fi
 
 # --- Configuration (override via environment variables) ---
 # PROJECT_DIR: root containing SugarCluster/ and sugarscape/
@@ -19,8 +24,13 @@ set -euo pipefail
 #       sbatch --array=1-66%50 -A 155415875505 submit.slurm
 # ----------------------------------------------------------
 
-PROJECT_DIR="${PROJECT_DIR}"
-SIMS_PER_JOB="${SIMS_PER_JOB:-10}"
+PROJECT_DIR="${PROJECT_DIR:-}"
+SIMS_PER_JOB="${SIMS_PER_JOB:-30}"
+
+# Strip /SugarCluster from PROJECT_DIR if the user accidentally included it
+if [ -n "$PROJECT_DIR" ] && [[ "$PROJECT_DIR" == */SugarCluster* ]]; then
+    PROJECT_DIR="${PROJECT_DIR%/SugarCluster*}"
+fi
 
 # Auto-detect relative to script if PROJECT_DIR not set
 if [ -z "$PROJECT_DIR" ]; then
@@ -33,7 +43,7 @@ END_ID=$(( START_ID + SIMS_PER_JOB - 1 ))
 
 echo "[Task ${SLURM_ARRAY_TASK_ID}] Running sims ${START_ID}..${END_ID} (${SIMS_PER_JOB} per task)"
 
-python "${PROJECT_DIR}/SugarCluster/run_batch.py" \
+"${PROJECT_DIR}/SugarCluster/.venv/bin/python" "${PROJECT_DIR}/SugarCluster/run_batch.py" \
     --project-dir "${PROJECT_DIR}" \
     --start-id "${START_ID}" \
     --end-id "${END_ID}"

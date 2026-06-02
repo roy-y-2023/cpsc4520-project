@@ -76,18 +76,16 @@ def main():
     # --- 4. survival_by_penalty ---
     survival = disease.groupby(["framework", "penalty"])["survived"].mean().reset_index()
     survival.rename(columns={"survived": "survival_rate"}, inplace=True)
-    survival["penalty"] = survival["penalty"].astype(int)
+    survival["penalty"] = survival["penalty"].astype(float)
     survival.to_csv(OUT_SURVIVAL, index=False)
     print(f"Wrote {len(survival)} rows to {OUT_SURVIVAL.name}")
 
     # Quick stats
     print(f"\nKey findings:")
     print(f"  Overall survival:   {disease['survived'].mean():.1%}")
-    print(f"  Penalty=0 survival: {p0['survived'].mean():.1%}")
-    p2 = disease[disease["penalty"] == 2]
-    p3 = disease[disease["penalty"] == 3]
-    print(f"  Penalty=2 survival: {p2['survived'].mean():.1%}")
-    print(f"  Penalty=3 survival: {p3['survived'].mean():.1%}")
+    for p_val in sorted(disease["penalty"].unique()):
+        p_sub = disease[disease["penalty"] == p_val]
+        print(f"  Penalty={p_val} survival: {p_sub['survived'].mean():.1%}")
     print(f"  Penalty=0 avg final_gini: {p0['final_gini'].mean():.3f}")
     print(f"  Penalty=0 avg delta_gini: {p0['delta_final_gini'].mean():.3f}")
 

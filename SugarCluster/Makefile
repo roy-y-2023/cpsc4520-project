@@ -28,7 +28,10 @@ clean:
 	rm -rf plots/*
 	rm -f configs/*.config
 	rm -f jobs.csv
-	@echo "Cleaned generated files (data/ and timing/ preserved)"
+	rm logs/*.out logs/*.err
+	rm *.json
+	rm timing_*.csv
+	@echo "Cleaned generated files"
 
 push_code:
 	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git'   cpsc4520-project/   login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/

@@ -24,7 +24,7 @@ startingDiseasesPerAgent = [10, 10]
 diseaseTransmissionChance = [0.3, 0.6, 1.0]
 diseaseTagStringLength = [5, 13, 21]
 agentImmuneSystemLength = [10, 35, 60]
-diseaseSugarMetabolismPenalty = [0, 2, 3]
+diseaseSugarMetabolismPenalty = [0, 0.1, 0.25, 0.5, 1, 2, 3]
 
 [baseline]
 enabled = true

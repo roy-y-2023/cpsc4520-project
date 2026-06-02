@@ -78,19 +78,48 @@ def main() -> int:
         sys.stdout.flush()
 
         sim_start = time.perf_counter()
-        result = subprocess.run(
+        p = subprocess.Popen(
             [sys.executable, sugarscape_py, "--conf", str(config_path)],
             cwd=cwd,
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
         )
+
+        peak_rss_kb = 0
+        while True:
+            ret = p.poll()
+            try:
+                with open(f"/proc/{p.pid}/status") as f:
+                    for line in f:
+                        if line.startswith("VmRSS:"):
+                            rss = int(line.split()[1])
+                            if rss > peak_rss_kb:
+                                peak_rss_kb = rss
+                            break
+            except Exception:
+                pass
+            if ret is not None:
+                break
+            time.sleep(0.05)
+
+        stdout, stderr = p.communicate()
         sim_end = time.perf_counter()
         duration = sim_end - sim_start
+        peak_memory_mb = round(peak_rss_kb / 1024.0, 2)
+
+        class CompletedProcess:
+            def __init__(self, returncode, stdout, stderr):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        result = CompletedProcess(p.returncode, stdout, stderr)
 
         if result.returncode != 0:
             status = f"EXIT_{result.returncode}"
             msg = (
-                f"{label} FAILED ({status}) in {duration:.1f}s\n"
+                f"{label} FAILED ({status}) in {duration:.1f}s (Peak Mem: {peak_memory_mb:.2f}MB)\n"
                 f"  stdout: {result.stdout.strip()[:200]}\n"
                 f"  stderr: {result.stderr.strip()[:200]}"
             )
@@ -98,7 +127,7 @@ def main() -> int:
             errors.append({"job_id": job_id, "config_path": config_rel, "reason": status})
         else:
             status = "OK"
-            print(f"{label} OK ({duration:.1f}s)")
+            print(f"{label} OK ({duration:.1f}s, Peak Mem: {peak_memory_mb:.2f}MB)")
 
         timing.append({
             "job_id": job_id,
@@ -106,6 +135,7 @@ def main() -> int:
             "framework": row["framework"],
             **{p: row.get(p, "") for p in param_names},
             "duration_seconds": round(duration, 1),
+            "peak_memory_mb": peak_memory_mb,
             "status": status,
         })
 

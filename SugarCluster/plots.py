@@ -39,6 +39,18 @@ def load_node_dist():
     return pd.read_csv(RESULTS / "node_distribution.csv")
 
 
+def get_sims_per_job():
+    import re
+    submit_slurm = PROJECT / "submit.slurm"
+    if submit_slurm.exists():
+        with open(submit_slurm, "r", encoding="utf-8") as f:
+            content = f.read()
+            match = re.search(r'SIMS_PER_JOB="\$\{SIMS_PER_JOB:-(\d+)\}"', content)
+            if match:
+                return int(match.group(1))
+    return 30
+
+
 # ─── PLOT 1: Cumulative Completion (Real vs Theoretical) ────────
 
 def plot_cumulative_completion():
@@ -54,7 +66,10 @@ def plot_cumulative_completion():
     ax.set_ylabel("Cumulative Simulations Completed")
     ax.set_title("Simulation Throughput: Real vs Theoretical")
     ax.legend(loc="lower right")
-    ax.set_ylim(0, 700)
+    
+    max_sims = max(real["cum_sims"].max(), theo["cum_sims"].max()) if not real.empty else 1600
+    ax.set_ylim(0, max_sims * 1.1)
+    
     fig.tight_layout()
     fig.savefig(OUT_DIR / "cumulative_completion.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -65,13 +80,14 @@ def plot_cumulative_completion():
 
 def plot_slurm_task_duration():
     slurm = load_slurm()
+    sims_per_job = get_sims_per_job()
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(slurm["elapsed_seconds"], bins=12, color="#2c7bb6", edgecolor="white")
     ax.axvline(slurm["elapsed_seconds"].mean(), color="#d7191c", linestyle="--",
                label=f"Mean: {slurm['elapsed_seconds'].mean():.0f}s")
     ax.set_xlabel("SLURM Task Duration (seconds)")
     ax.set_ylabel("Number of Tasks")
-    ax.set_title("Distribution of 66 SLURM Task Durations (10 sims each)")
+    ax.set_title(f"Distribution of {len(slurm)} SLURM Task Durations ({sims_per_job} sims each)")
     ax.legend()
     fig.tight_layout()
     fig.savefig(OUT_DIR / "slurm_task_duration.png", dpi=150, bbox_inches="tight")
@@ -83,12 +99,14 @@ def plot_slurm_task_duration():
 
 def plot_node_distribution():
     nd = load_node_dist()
+    slurm = load_slurm()
+    num_nodes = slurm["node"].nunique() if not slurm.empty else 20
     fig, ax = plt.subplots(figsize=(7, 4))
     bars = ax.bar(nd["tasks_per_node"].astype(str), nd["num_nodes"],
                   color="#2c7bb6", edgecolor="white")
     ax.set_xlabel("Tasks per Node")
     ax.set_ylabel("Number of Nodes")
-    ax.set_title("ACES Node Load Distribution (20 nodes total)")
+    ax.set_title(f"ACES Node Load Distribution ({num_nodes} nodes total)")
     for bar, val in zip(bars, nd["num_nodes"]):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.1,
                 str(val), ha="center", va="bottom", fontsize=10)
@@ -109,7 +127,7 @@ def plot_timing_by_penalty():
     sim_timing = sim_timing.merge(
         merged[["job_id", "penalty", "survived"]], on="job_id", how="left"
     )
-    sim_timing["penalty"] = sim_timing["penalty"].fillna(-1).astype(int)
+    sim_timing["penalty"] = sim_timing["penalty"].fillna(-1).astype(float)
 
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.boxplot(data=sim_timing, x="penalty", y="duration_seconds",
@@ -162,7 +180,9 @@ def plot_survival_stacked():
 
     pivot = survival.pivot(index="framework", columns="penalty", values="survival_rate")
     pivot = pivot.reindex(FRAMEWORKS)
-    colors = ["#2c7bb6", "#fdae61", "#d7191c"]
+    
+    unique_penalties = sorted(survival["penalty"].unique())
+    colors = sns.color_palette("Spectral_r", len(unique_penalties))
 
     fig, ax = plt.subplots(figsize=(10, 5))
     pivot.plot(kind="bar", stacked=False, ax=ax, color=colors, edgecolor="white", width=0.7)
@@ -170,7 +190,7 @@ def plot_survival_stacked():
     ax.set_ylabel("Survival Rate")
     ax.set_title("Survival Rate by Penalty Level")
     ax.set_ylim(0, 1.15)
-    ax.legend(title="Penalty", labels=["0", "2", "3"])
+    ax.legend(title="Penalty", labels=[str(p) for p in unique_penalties])
     ax.axhline(1.0, color="#2c7bb6", linestyle=":", alpha=0.3)
     ax.set_xticklabels(FW_LABELS, rotation=30, ha="right")
     fig.tight_layout()
@@ -200,6 +220,36 @@ def plot_gini_penalty0():
     print("  saved gini_penalty0.png")
 
 
+# ─── PLOT 8: Peak Memory Usage by Penalty ───────────────────────
+
+def plot_memory_by_penalty():
+    sim_timing = pd.concat(
+        [pd.read_csv(f) for f in sorted((PROJECT / "timing").glob("timing_*.csv"))],
+        ignore_index=True
+    )
+    if "peak_memory_mb" not in sim_timing.columns:
+        print("  skipping memory plot (no peak_memory_mb column)")
+        return
+
+    merged = pd.read_csv(RESULTS / "run_summary.csv")
+    sim_timing = sim_timing.merge(
+        merged[["job_id", "penalty"]], on="job_id", how="left"
+    )
+    sim_timing["penalty"] = sim_timing["penalty"].fillna(-1).astype(float)
+    unique_penalties = sorted(sim_timing["penalty"].unique())
+    
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.boxplot(data=sim_timing, x="penalty", y="peak_memory_mb",
+                hue="penalty", palette="Spectral_r", legend=False, ax=ax)
+    ax.set_xlabel("Disease Metabolism Penalty")
+    ax.set_ylabel("Peak Memory Usage (MB)")
+    ax.set_title("Peak Memory Usage by Disease Penalty Level")
+    fig.tight_layout()
+    fig.savefig(OUT_DIR / "memory_by_penalty.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("  saved memory_by_penalty.png")
+
+
 # ─── MAIN ───────────────────────────────────────────────────────
 
 def main():
@@ -212,7 +262,8 @@ def main():
     plot_heatmap_penalty0()
     plot_survival_stacked()
     plot_gini_penalty0()
-    print(f"Done. 7 plots saved to {OUT_DIR}/")
+    plot_memory_by_penalty()
+    print(f"Done. 8 plots saved to {OUT_DIR}/")
 
 
 if __name__ == "__main__":

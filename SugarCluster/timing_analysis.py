@@ -13,9 +13,22 @@ def load_per_sim_timing():
     return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
 
 
+def get_sims_per_job():
+    import re
+    submit_slurm = PROJECT / "submit.slurm"
+    if submit_slurm.exists():
+        with open(submit_slurm, "r", encoding="utf-8") as f:
+            content = f.read()
+            match = re.search(r'SIMS_PER_JOB="\$\{SIMS_PER_JOB:-(\d+)\}"', content)
+            if match:
+                return int(match.group(1))
+    return 30
+
+
 def compute_batch_durations(sim_df):
+    sims_per_job = get_sims_per_job()
     grouped = sim_df.groupby("job_id")["duration_seconds"].sum().reset_index()
-    sim_df["batch_id"] = ((sim_df["job_id"] - 1) // 10) + 1
+    sim_df["batch_id"] = ((sim_df["job_id"] - 1) // sims_per_job) + 1
     batch = sim_df.groupby("batch_id").agg(
         sim_count=("job_id", "count"),
         total_sim_seconds=("duration_seconds", "sum"),
@@ -25,12 +38,13 @@ def compute_batch_durations(sim_df):
 
 
 def compute_cumulative_real(slurm_df):
+    sims_per_job = get_sims_per_job()
     df = slurm_df.copy()
     df["end_time"] = pd.to_datetime(df["end_time"])
     df = df.sort_values("end_time").reset_index(drop=True)  # reset so index = 0,1,2,...
     start = pd.to_datetime(slurm_df["start_time"]).min()    # anchor t=0 to first job start
     df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
-    df["cum_sims"] = (df.index + 1) * 10
+    df["cum_sims"] = (df.index + 1) * sims_per_job
     return df[["t_seconds", "cum_sims"]]
 
 

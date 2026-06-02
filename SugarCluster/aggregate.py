@@ -127,6 +127,9 @@ def main():
     df = pd.DataFrame(rows)
 
     timing_cols = ["job_id", "duration_seconds", "status"]
+    if not timing.empty and "peak_memory_mb" in timing.columns:
+        timing_cols.append("peak_memory_mb")
+
     if not timing.empty:
         df = df.merge(timing[timing_cols], on="job_id", how="left")
 

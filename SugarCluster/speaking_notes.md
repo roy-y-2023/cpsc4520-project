@@ -33,10 +33,10 @@
 > pandemics? Does an ethical framework like altruism or egoism change the
 > outcome?
 
-> The scale: we swept 3 values for each of 4 disease knobs across 8 ethical
-> frameworks — that's 648 disease combinations plus 8 baseline runs without
-> disease. Total: 656 simulations, 1,000 timesteps each. We used seed 12345
-> and collected per-timestep metrics in JSON.
+> The scale: we swept 3 values for 3 disease knobs and 7 values for the
+> metabolism penalty across 8 ethical frameworks — that's 1,512 disease combinations
+> plus 8 baseline runs without disease. Total: 1,520 simulations, 1,000 timesteps
+> each. We used seed 12345 and collected per-timestep metrics in JSON.
 
 ---
 
@@ -47,20 +47,20 @@
 > hard-coded Python — adding a new knob means adding one line of TOML.
 
 > generate_configs.py reads that TOML, computes the cartesian product, and
-> emits 656 minimal JSON config files plus a jobs.csv manifest. "Minimal"
+> emits 1,520 minimal JSON config files plus a jobs.csv manifest. "Minimal"
 > means each config only contains the keys that differ from Sugarscape's
 > internal defaults — this keeps configs small and avoids cascading when
 > Sugarscape's defaults change upstream.
 
 > The submit.slurm script dispatches these as a SLURM job array. But we
-> couldn't submit 656 array tasks because ACES has a QOS limit on job array
-> size. So we bundled 10 simulations into each task — 66 tasks total instead
-> of 656. That's the SIMS_PER_JOB parameter, configurable via an environment
+> couldn't submit 1,520 array tasks because ACES has a QOS limit on job array
+> size. So we bundled 30 simulations into each task — 51 tasks total instead
+> of 1,520. That's the SIMS_PER_JOB parameter, configurable via an environment
 > variable.
 
-> On ACES, each task runs run_batch.py which loops through its 10 configs,
+> On ACES, each task runs run_batch.py which loops through its 30 configs,
 > records per-simulation timing, and writes a per-batch timing CSV. After all
-> jobs finish, we pull the data back with rsync — 656 JSON logs plus 66 timing
+> jobs finish, we pull the data back with rsync — 1,520 JSON logs plus 51 timing
 > files.
 
 > Back on our local machine, aggregate.py parses everything into a single
@@ -73,24 +73,25 @@
 ## Slide 5: Distributed Execution Details (3:30–5:00)
 
 > Here's what the actual execution looked like on ACES. This is real data
-> pulled from SLURM's sacct command for job array 1722415.
+> pulled from SLURM's sacct command for job array 1730737.
 
-> 66 tasks across 20 different ACES nodes. Each task runs 10 simulations
-> sequentially. Node distribution is shown here — most nodes handled 1–3 tasks.
+> 51 tasks across 11 different ACES nodes. Each task runs up to 30 simulations
+> sequentially. Node distribution is shown here — node loading ranged from 1
+> task up to 12 tasks on the most active node.
 
-> Key numbers: total wall time — 2 minutes and 23 seconds. That's the real
+> Key numbers: total wall time — 5 minutes and 16 seconds. That's the real
 > clock time from first task start to last task end. The serial equivalent —
-> if we ran all 656 sims one after another on a single core — would have been
-> 3,681 seconds, or 61 minutes. So we got a 25.7x speedup.
+> if we ran all 1,520 sims one after another on a single core — would have been
+> 6,599 seconds, or 110 minutes. So we got a 20.9x speedup.
 
-> Throughput: over 16,000 simulations per wall-clock hour. Overhead is just
-> 1.3% — the Python interpreter startup and config loading costs about 0.8
-> seconds per batch of 10 sims. Everything else is actual simulation work.
+> Throughput: over 17,300 simulations per wall-clock hour. Overhead is 6.0% —
+> the Python interpreter startup and config loading costs about 8.6 seconds
+> per batch of 30 sims. Everything else is actual simulation work.
 
 > The cumulative completion plot visualizes this: the solid blue line is the
-> real execution — you can see it takes about 50 seconds for the first few
+> real execution — you can see it takes about 76 seconds for the first few
 > tasks to start completing, then it accelerates as more nodes get allocated.
-> The dashed red line is the theoretical best case if all 66 tasks started
+> The dashed red line is the theoretical best case if all 51 tasks started
 > simultaneously — the gap shows ACES scheduling overhead.
 
 ---
@@ -98,19 +99,20 @@
 ## Slide 6: Results — Timing Breakdown (5:00–5:45)
 
 > Looking at per-simulation timing, there's a clear bimodal distribution.
-> Simulations either run to completion at around 10 seconds, or they end in
+> Simulations either run to completion at around 24.4 seconds for penalty=0 (or
+> around 5.2 seconds for surviving runs with penalty > 0), or they end in
 > under half a second.
 
-> The box plot tells the story: penalty=0 runs take ~10 seconds because agents
-> survive to timestep 1,000. Penalty=2 and penalty=3 cause instant mass
-> extinction — all 250 agents die at timestep 1 because their metabolism cost
+> The box plot tells the story: penalty=0 runs take ~24.4 seconds because agents
+> survive to timestep 1,000. Penalty levels from 0.1 to 3.0 cause instant mass
+> extinction — all agents die at timestep 1 because their metabolism cost
 > exceeds the available sugar on the map.
 
 > This was actually a calibration challenge. Our original design used penalties
-> of 0, 2, and 5 — but at penalty 5, every single config collapsed instantly,
-> giving us no data to compare. We backed down to 0, 2, and 3 which gives
-> roughly 89% extinction at the higher penalties but still leaves some
-> surviving combos.
+> of 0, 2, and 5 — but at penalty 5, everyone died instantly. We expanded our
+> sweep to study intermediate penalties including 0.1, 0.25, 0.5, and 1.0.
+> Interestingly, even a tiny penalty of 0.1 leads to the exact same 89%
+> extinction rate at timestep 1, highlighting how thin the resource buffer is.
 
 ---
 
@@ -124,28 +126,29 @@
 > frameworks look nearly identical — this is an important finding. The disease
 > physics dominate; ethical decision-making doesn't register.
 
-> The sweet spot: high transmission plus short immune system guarantees
-> universal infection. Low transmission plus long immune system keeps it
-> around 5% peak. Transmission is the dominant knob — immunity has a smaller
-> effect at the same transmission level.
+> Because of our scaled-up disease initialization with 25 starting diseases and
+> 10 per agent, almost all agents start infected. This pushes the peak infection
+> percentage near 100% for almost all parameters, only dropping to 98.4% with
+> max immunity. The initial pandemic load simply overwhelms any transmission
+> or immunity variations.
 
 ---
 
 ## Slide 8: Results — Survival & Inequality (6:30–7:00)
 
 > Survival rate stacked by penalty: penalty=0 is solid across all frameworks,
-> near 100%. Penalty=2 and 3 are around 11% — only the parameter combos with
-> the longest immune system length survive.
+> near 100%. Penalties from 0.1 to 3.0 are around 11% — only the parameter combos
+> with the longest immune system length and shortest disease tag survive.
 
 > For inequality — we compute delta Gini as the disease run's final Gini
 > coefficient minus the baseline run's final Gini. A positive delta means
 > the pandemic increased inequality; negative means it decreased.
 
-> The box plot shows that for penalty=0, the mean delta is near zero — roughly
-> the same inequality with or without pandemic. This is surprising. You might
-> expect a pandemic to drive inequality up, but the metabolism penalty
-> mechanism just subtracts a fixed amount from every agent's metabolism budget,
-> so it affects everyone equally.
+> The box plot shows that for penalty=0, the mean delta Gini is around -0.01 —
+> wealth inequality actually slightly decreases under the pandemic, with Gini
+> converging to ~0.29 compared to a baseline of 0.3. The flat metabolic load
+> acts as a compression mechanism on the wealth distribution rather than
+> exacerbating inequality, though the effect is small.
 
 ---
 
@@ -176,8 +179,8 @@
 
 > Several platform issues bit us during implementation.
 
-> The QOS job limit was the biggest — ACES rejected our initial 656-task array.
-> The fix was hybrid batching: 10 sims per task, 66 tasks total, set via
+> The QOS job limit was the biggest — ACES rejected our initial 1,520-task array.
+> The fix was hybrid batching: 30 sims per task, 51 tasks total, set via
 > SIMS_PER_JOB.
 
 > Windows-to-Linux friction: os.path.join produces backslashes on Windows,
@@ -190,9 +193,9 @@
 > staging directory, not your project folder. We switched to an absolute path
 > set via a PROJECT_DIR environment variable.
 
-> And the disease penalty calibration — as mentioned, our original [0, 2, 5]
-> sweep gave zero surviving runs at penalty=5, wasting 216 simulations. We
-> recalibrated to [0, 2, 3] to get meaningful data.
+> And the disease penalty calibration — we expanded the sweep to include intermediate
+> values [0.1, 0.25, 0.5, 1.0] alongside [2.0, 3.0]. Strikingly, even a tiny penalty
+> of 0.1 led to the same 89% extinction rate at timestep 1.
 
 ---
 
@@ -214,6 +217,6 @@
 
 ## Slide 12: Thank You (9:00–9:15)
 
-> To recap: SugarCluster is a TOML-driven middleware pipeline. 656 simulations,
-> 20 ACES nodes, 2 minutes 24 seconds wall time, 25x parallelism. All code is
+> To recap: SugarCluster is a TOML-driven middleware pipeline. 1,520 simulations,
+> 11 ACES nodes, 5 minutes 16 seconds wall time, 20.9x parallelism. All code is
 > in the SugarCluster directory. Happy to take questions.

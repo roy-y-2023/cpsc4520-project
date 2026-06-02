@@ -182,4 +182,4 @@ The middleware is designed to make this a 2-line change.
 
 ## License
 
-This project is part of CPSC 4520 Distributed Systems (Texas A&M).
+This project is part of CPSC 4520 Distributed Systems.
