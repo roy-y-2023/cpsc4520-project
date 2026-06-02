@@ -37,18 +37,18 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ```
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ sweep.toml   │────▶│ generate_configs │────▶│ 1,520 .config files   │
+│ sweep.toml   │───▶│ generate_configs │───▶│ 1,520 .config files     │
 │ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest    │
 └──────────────┘     └──────────────────┘     └───────────┬────────────┘
                                                           │
                                         ┌─────────────────┴─────────────────┐
                                         ▼                                   ▼
-                               submit.slurm                  submit_tamulauncher.slurm
-                                   (job array)                       (TAMULauncher)
+                                   submit.slurm                 submit_tamulauncher.slurm
+                                    (job array)                      (TAMULauncher)
                                         └─────────────────┬─────────────────┘
                                                           ▼
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ plots/*.png  │◀────│ aggregate.py     │◀────│ ACES HPC Cluster      │
+│ plots/*.png  │◀───│ aggregate.py     │◀───│ ACES HPC Cluster        │
 │ 8 figures    │     │ + analyze.py     │     │ 1,520 JSON results     │
 └──────────────┘     │ + plots.py       │     └────────────────────────┘
                      └──────────────────┘
