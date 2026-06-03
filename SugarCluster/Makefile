@@ -84,10 +84,10 @@ clean:
 	rm -f results_summary.csv retry.csv
 	@echo "Cleaned generated files"
 
-push_code:
+push-code:
 	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' --exclude 'results' --exclude 'plots'  --exclude 'timing' --exclude 'data' cpsc4520-project/ login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/
 
-pull_data:
+pull-data:
 	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/sim_*.json data/
-	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/timing/timing_sim_*.json timing/
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/timing_sim_*.json timing/
 	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/submit_time_*.txt ./

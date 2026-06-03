@@ -1,0 +1,1 @@
+{"job_id": 86, "backend": "tamu", "run_type": "disease", "framework": "none", "diseaseTransmissionChance": "0.1", "diseaseTagStringLength": "5", "agentImmuneSystemLength": "35", "diseaseSugarMetabolismPenalty": "0.01", "start_time": "2026-06-03T05:50:25.549787+00:00", "end_time": "2026-06-03T05:50:29.628096+00:00", "duration_seconds": 4.1, "peak_memory_mb": 26.85, "status": "OK"}
