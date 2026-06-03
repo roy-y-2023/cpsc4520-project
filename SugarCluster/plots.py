@@ -244,11 +244,12 @@ def plot_survival_stacked():
     print("  saved survival_stacked.png")
 
 
-# ─── PLOT 7: Gini Delta for Penalty=0 ──────────────────────────
+# ─── PLOT 7: Gini Delta for Penalty=0.001 ───────────────────────
 
-def plot_gini_penalty0():
+def plot_gini_penalty():
     df = load()
-    disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0)].copy()
+    # Filter by penalty == 0.001 and only include survived runs
+    disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0.001) & (df["survived"] == True)].copy()
     disease["framework"] = pd.Categorical(disease["framework"], categories=FRAMEWORKS)
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -256,13 +257,13 @@ def plot_gini_penalty0():
                 order=FRAMEWORKS, hue="framework", palette="Set2", legend=False, ax=ax)
     ax.axhline(0, color="gray", linestyle="--", alpha=0.5)
     ax.set_ylabel("Gini Change (disease final - baseline final)")
-    ax.set_title("Wealth Inequality Change Under Pandemic by Framework (penalty=0 only)")
+    ax.set_title("Wealth Inequality Change Under Pandemic by Framework (penalty=0.001 only)")
     ax.set_xticks(range(len(FRAMEWORKS)))
     ax.set_xticklabels(FW_LABELS, rotation=30, ha="right")
     fig.tight_layout()
-    fig.savefig(OUT_DIR / "gini_penalty0.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "gini_penalty.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved gini_penalty0.png")
+    print("  saved gini_penalty.png")
 
 
 # ─── PLOT 8: Peak Memory Usage by Penalty ──────────────────────────────────
@@ -302,7 +303,7 @@ def main():
     plot_timing_by_penalty()
     plot_heatmap_penalty0()
     plot_survival_stacked()
-    plot_gini_penalty0()
+    plot_gini_penalty()
     plot_memory_by_penalty()
     print(f"Done. 8 plots saved to {OUT_DIR}/")
 

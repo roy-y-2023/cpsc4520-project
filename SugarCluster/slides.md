@@ -170,11 +170,11 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 
 ## Results: Inequality (Gini Coefficient)
 
-![gini](plots/gini_penalty0.png)
+![gini](plots/gini_penalty.png)
 
-- **Mean delta_gini ≈ −0.005** — wealth inequality slightly decreases under penalty=0
+- **Mean delta_gini ≈ −0.034** — wealth inequality decreases under penalty=0.001 (survivors only)
 - Baseline Gini ~0.3 across all frameworks
-- Disease runs converge to Gini ~0.295
+- Disease runs converge to Gini ~0.266
 - **Finding:** Economic structure of the disease (metabolism penalty) matters more than ethical behavior
 
 ---

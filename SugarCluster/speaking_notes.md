@@ -186,13 +186,13 @@
 
 > We also analyzed wealth inequality by looking at the change in the Gini coefficient.
 
-> Interestingly, under a pandemic with penalty=0, wealth inequality slightly 
-> decreases, with a mean delta Gini of approximately −0.005.
+> Interestingly, under a pandemic with penalty=0.001, wealth inequality 
+> decreases even more, with a mean delta Gini of approximately −0.034.
 
 > The flat metabolic penalty acts as a wealth compression mechanism, squeezing 
-> the resources of wealthier agents relatively more. However, the effect is tiny, 
-> confirming that disease physics and basic metabolic parameters dominate over 
-> ethical behavior.
+> the resources of wealthier agents relatively more. With a penalty of 0.001, the Gini 
+> coefficient drops from 0.30 to 0.266, resulting in a mean delta Gini of −0.034. 
+> Disease physics and basic metabolic parameters dominate over ethical behavior.
 
 ---
 
