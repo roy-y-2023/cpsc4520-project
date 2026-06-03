@@ -23,9 +23,9 @@
 
 #SBATCH --job-name=sugarscape-tamulauncher
 #SBATCH --nodes=20
-#SBATCH --ntasks-per-node=12
+#SBATCH --ntasks-per-node=8
 #SBATCH --time=00:30:00
-#SBATCH --mem=12G
+#SBATCH --mem=3G
 #SBATCH --output=logs/tamulauncher-%j.out
 #SBATCH --error=logs/tamulauncher-%j.err
 
@@ -38,7 +38,7 @@ set -euo pipefail
 # ---------------------
 
 PROJECT_DIR="${PROJECT_DIR:-}"
-COMMANDS_PER_NODE="${COMMANDS_PER_NODE:-16}"
+COMMANDS_PER_NODE="${COMMANDS_PER_NODE:-8}"
 
 # Strip /SugarCluster from PROJECT_DIR if accidentally included
 if [ -n "$PROJECT_DIR" ] && [[ "$PROJECT_DIR" == */SugarCluster* ]]; then
@@ -91,7 +91,7 @@ mkdir -p "${PROJECT_DIR}/SugarCluster/logs"
 cd "${PROJECT_DIR}/SugarCluster"
 
 # Run all commands concurrently via TAMULauncher
-tamulauncher --norestart --commands-pernode "${COMMANDS_PER_NODE}" "${COMMANDS_FILE}"
+tamulauncher --commands-pernode "${COMMANDS_PER_NODE}" "${COMMANDS_FILE}"
 
 echo "=== TAMULauncher job complete ==="
 echo "Check per-sim timing JSON files in: ${PROJECT_DIR}/SugarCluster/"

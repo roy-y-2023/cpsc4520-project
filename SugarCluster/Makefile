@@ -58,7 +58,7 @@ setup-server:
 	bash setup_aces.sh
 	python3 --version
 
-submit-slurm:
+submit-slurm: configs
 ifndef ACCOUNT
 	$(error ACCOUNT is required. Usage: make submit-slurm ACCOUNT=<account> [PROJECT_DIR=...])
 endif
@@ -66,10 +66,11 @@ endif
 	@echo "Submission time recorded: $$(cat submit_time_slurm.txt)"
 	PROJECT_DIR="$(PROJECT_DIR)" sbatch -A $(ACCOUNT) submit.slurm
 
-submit-tamu:
+submit-tamu: commands
 ifndef ACCOUNT
 	$(error ACCOUNT is required. Usage: make submit-tamu ACCOUNT=<account> [PROJECT_DIR=...])
 endif
+	tamulauncher --remove-logs $(PROJECT_DIR)/SugarCluster/commands.txt
 	@date -u +"%Y-%m-%dT%H:%M:%SZ" > submit_time_tamu.txt
 	@echo "Submission time recorded: $$(cat submit_time_tamu.txt)"
 	PROJECT_DIR="$(PROJECT_DIR)" sbatch -A $(ACCOUNT) submit_tamulauncher.slurm

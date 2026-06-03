@@ -202,6 +202,7 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 | **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims → then switched to TAMULauncher |
 | **ACES global concurrency cap** (40 jobs) | TAMULauncher bypasses this entirely |
 | **TAMULauncher queue wait** | Large resource ask (48 CPU or 16GB per node) → ~2 hour queue time |
+| **Misleading Log**| It says process got killed, so I proceed to debug OOM, turns out it's normal TAMULauncher teardown behavior |
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |

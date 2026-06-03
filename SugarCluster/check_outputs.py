@@ -129,13 +129,6 @@ def main():
 
     print(f"\nResults: {valid_ok} COMPLETE  |  {extinction_count} EXTINCTION (valid)  |  {failed_count} FAILED  |  {len(results)} total")
 
-    if extinction_count > 0:
-        print(f"\nExtinction breakdown (earliest to latest):")
-        extinctions = [r for r in results if "EXTINCTION" in r["status"]]
-        for r in sorted(extinctions, key=lambda x: x["status"]):
-            ts = r["status"].split("ts=")[1].split(" ")[0] if "ts=" in r["status"] else "?"
-            print(f"  [{r['job_id']}] {r['framework']} t={r['diseaseTransmissionChance']} tag={r['diseaseTagStringLength']} imm={r['agentImmuneSystemLength']} pen={r['diseaseSugarMetabolismPenalty']} -> extinct at ts={ts}")
-
     if failed_count > 0:
         print(f"\nFailed jobs ({failed_count}):")
         with open(args.retry, "w", newline="") as f:

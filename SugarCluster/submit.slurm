@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=sugarscape-sweep
-#SBATCH --array=1-51%50
+#SBATCH --array=1-97%50
 #SBATCH --time=01:00:00
 #SBATCH --mem=1G
 #SBATCH --ntasks=1
