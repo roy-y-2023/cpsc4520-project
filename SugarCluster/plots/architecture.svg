@@ -1,77 +1,156 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
-  <defs>
-    <!-- Shadow filter -->
-    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
-      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.08" flood-color="#0f172a" />
-    </filter>
-    
-    <!-- Arrowhead marker -->
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569" />
-    </marker>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%" style="background-color: #FFFFFF; font-family: 'Inter', system-ui, -apple-system, sans-serif;">
+    <defs>
+        <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+            <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.06"/>
+        </filter>
+        <filter id="shadow-hover" x="-10%" y="-10%" width="130%" height="130%">
+            <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#0F172A" flood-opacity="0.1"/>
+        </filter>
 
-  <!-- Background Canvas -->
-  <rect width="100%" height="100%" fill="#ffffff" />
-  
-  <!-- ==================== CONNECTIONS (drawn first so they sit behind boxes) ==================== -->
-  
-  <!-- Row 1: toml -> gen -> configs -->
-  <line x1="390" y1="200" x2="632" y2="200" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  <line x1="960" y1="200" x2="1162" y2="200" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  
-  <!-- Row 1 Configs to Row 2 execution strategies -->
-  <path d="M 1350 260 L 1350 320 L 550 320 L 550 382" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 1350 320 L 1050 320 L 1050 382" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  
-  <!-- Row 2 execution strategies to ACES HPC Cluster -->
-  <path d="M 550 510 L 550 570 L 1350 570 L 1350 632" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 1050 510 L 1050 570" fill="none" stroke="#64748b" stroke-width="3" />
-  
-  <!-- Row 3: aces -> agg -> plots -->
-  <line x1="1170" y1="700" x2="968" y2="700" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
-  <line x1="640" y1="700" x2="398" y2="700" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+        <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#EFF6FF" />
+            <stop offset="100%" stop-color="#DBEAFE" />
+        </linearGradient>
+        <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F5F3FF" />
+            <stop offset="100%" stop-color="#EDE9FE" />
+        </linearGradient>
+        <linearGradient id="grad-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0FDFA" />
+            <stop offset="100%" stop-color="#CCFBF1" />
+        </linearGradient>
+        <linearGradient id="grad-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFBEB" />
+            <stop offset="100%" stop-color="#FEF3C7" />
+        </linearGradient>
+        <linearGradient id="grad-indigo" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#EEF2FF" />
+            <stop offset="100%" stop-color="#E0E7FF" />
+        </linearGradient>
+        <linearGradient id="grad-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FDF2F8" />
+            <stop offset="100%" stop-color="#FCE7F3" />
+        </linearGradient>
+        <linearGradient id="grad-emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0FDF4" />
+            <stop offset="100%" stop-color="#DCFCE7" />
+        </linearGradient>
 
-  <!-- ==================== BOXES & TEXT ==================== -->
-  
-  <!-- Box 1: sweep.toml (Purple) -->
-  <rect x="110" y="140" width="280" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="250" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">sweep.toml</text>
-  <text x="250" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">(4 knobs)</text>
-  
-  <!-- Box 2: generate_configs.py (Purple) -->
-  <rect x="640" y="140" width="320" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="800" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">generate_configs.py</text>
-  <text x="800" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">(Cartesian Sweep Engine)</text>
-  
-  <!-- Box 3: 2,888 configs + jobs.csv (Purple) -->
-  <rect x="1170" y="140" width="360" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="1350" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">2,888 .config files</text>
-  <text x="1350" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">+ jobs.csv manifest</text>
-  
-  <!-- Box 4: submit.slurm (Blue) -->
-  <rect x="380" y="390" width="340" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="550" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">submit.slurm</text>
-  <text x="550" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(Job Array: 40 sims/task)</text>
-  
-  <!-- Box 5: submit_tamulauncher.slurm (Blue) -->
-  <rect x="850" y="390" width="400" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="1050" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">submit_tamulauncher.slurm</text>
-  <text x="1050" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(TAMULauncher Concurrency)</text>
-  
-  <!-- Box 6: ACES HPC Cluster (Blue) -->
-  <rect x="1170" y="640" width="360" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
-  <text x="1350" y="695" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">ACES HPC Cluster</text>
-  <text x="1350" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(2,888 JSON results)</text>
-  
-  <!-- Box 7: aggregate.py + analyze.py + plots.py (Green) -->
-  <rect x="640" y="640" width="320" height="120" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2" filter="url(#shadow)" />
-  <text x="800" y="685" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="bold" fill="#065f46" text-anchor="middle">aggregate.py + analyze.py</text>
-  <text x="800" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="bold" fill="#065f46" text-anchor="middle">+ plots.py</text>
-  <text x="800" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#047857" text-anchor="middle">(Analysis &amp; Plotting Pipeline)</text>
-  
-  <!-- Box 8: plots/*.png (Green) -->
-  <rect x="110" y="640" width="280" height="120" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2" filter="url(#shadow)" />
-  <text x="250" y="695" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#065f46" text-anchor="middle">plots/*.png</text>
-  <text x="250" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#047857" text-anchor="middle">(8 final presentation figures)</text>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#64748B" />
+        </marker>
+    </defs>
+
+    <rect width="100%" height="100%" fill="#FFFFFF" />
+
+    <g fill="none" stroke="#64748B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        
+        <path d="M 440 260 L 650 260" marker-end="url(#arrow)" />
+        <path d="M 1020 260 L 1230 260" marker-end="url(#arrow)" />
+
+        <path d="M 1420 330 C 1420 400, 1200 400, 1200 460" stroke-dasharray="10 8" marker-end="url(#arrow)" />
+        <path d="M 1420 330 C 1420 400, 1640 400, 1640 460" stroke-dasharray="10 8" marker-end="url(#arrow)" />
+
+        <path d="M 1200 610 C 1200 680, 1420 680, 1420 740" marker-end="url(#arrow)" />
+        <path d="M 1640 610 C 1640 680, 1420 680, 1420 740" marker-end="url(#arrow)" />
+
+        <path d="M 1240 820 L 1030 820" marker-end="url(#arrow)" />
+        <path d="M 660 820 L 450 820" marker-end="url(#arrow)" />
+
+    </g>
+
+
+    <g transform="translate(80, 190)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-blue)" stroke="#93C5FD" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#3B82F6" stroke-width="3" stroke-linecap="round">
+            <path d="M 44 58 h 24 M 44 70 h 24 M 44 82 h 24" />
+            <path d="M 50 54 v 8 M 62 66 v 8 M 48 78 v 8" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">sweep.toml</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">4 configuration knobs</text>
+    </g>
+
+    <g transform="translate(660, 190)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-purple)" stroke="#C4B5FD" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <polyline points="48,58 38,70 48,82" />
+            <polyline points="64,58 74,70 64,82" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">generate_configs.py</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">Python setup generator</text>
+    </g>
+
+    <g transform="translate(1240, 190)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-teal)" stroke="#5EEAD4" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#14B8A6" stroke-width="2.5" fill="none" stroke-linejoin="round">
+            <rect x="40" y="52" width="20" height="24" rx="3" />
+            <rect x="46" y="58" width="20" height="24" rx="3" fill="#FFFFFF" />
+            <rect x="52" y="64" width="20" height="24" rx="3" fill="#FFFFFF" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">2,888 .config files</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">+ jobs.csv manifest</text>
+    </g>
+
+    <g transform="translate(1020, 470)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-orange)" stroke="#FCD34D" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#F59E0B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <polyline points="44,58 54,66 44,74" />
+            <line x1="50" y1="82" x2="66" y2="82" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">submit.slurm</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">Standard Job Array Mode</text>
+    </g>
+
+    <g transform="translate(1460, 470)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-orange)" stroke="#FCD34D" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#F59E0B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <polyline points="44,58 54,66 44,74" />
+            <line x1="50" y1="82" x2="66" y2="82" />
+        </g>
+        <text x="108" y="65" font-size="20" font-weight="700" fill="#1E293B">submit_tamulauncher.slurm</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">High-Throughput Launcher Mode</text>
+    </g>
+
+    <g transform="translate(1240, 750)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-indigo)" stroke="#A5B4FC" stroke-width="3" filter="url(#shadow-hover)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#4F46E5" stroke-width="2.5" fill="none" stroke-linejoin="round">
+            <rect x="40" y="50" width="32" height="10" rx="2" />
+            <circle cx="46" cy="55" r="1.5" fill="#4F46E5"/>
+            <rect x="40" y="64" width="32" height="10" rx="2" />
+            <circle cx="46" cy="69" r="1.5" fill="#4F46E5"/>
+            <rect x="40" y="78" width="32" height="10" rx="2" />
+            <circle cx="46" cy="83" r="1.5" fill="#4F46E5"/>
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="800" fill="#1E293B">ACES HPC Cluster</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">Output: 2,888 JSON results</text>
+    </g>
+
+    <g transform="translate(660, 750)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-pink)" stroke="#F9A8D4" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#EC4899" stroke-width="3" stroke-linecap="round" fill="none">
+            <path d="M 40 82 v -12 M 48 82 v -22 M 56 82 v -16 M 64 82 v -26 M 72 82 v -18" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">Data Processing</text>
+        <text x="108" y="95" font-size="15" font-weight="500" fill="#475569">aggregate.py / analyze.py / plots.py</text>
+    </g>
+
+    <g transform="translate(80, 750)">
+        <rect width="360" height="140" rx="16" fill="url(#grad-emerald)" stroke="#86EFAC" stroke-width="2" filter="url(#shadow)" />
+        <circle cx="56" cy="70" r="32" fill="#FFFFFF" filter="url(#shadow)" />
+        <g stroke="#22C55E" stroke-width="2.5" fill="none" stroke-linejoin="round">
+            <rect x="40" y="52" width="32" height="32" rx="4" />
+            <circle cx="48" cy="62" r="3" fill="#22C55E" stroke="none" />
+            <path d="M 40 80 l 10 -12 l 6 6 l 8 -8 l 8 8" />
+        </g>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">Final Visualizations</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">plots/*.png (8 figures)</text>
+    </g>
+
 </svg>
