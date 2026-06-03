@@ -19,6 +19,7 @@
 - Project code lives in `SugarCluster/` — `uv add` any dependencies
 - Dependencies installed: `pandas`, `matplotlib`, `seaborn`, `tomli`
 - Run `uv sync` after cloning
+- Scripts doesn't use any external dependencies may be run directly using `python3`
 
 ## Project Structure
 
@@ -27,7 +28,7 @@ SugarCluster/                  # Main implementation (all new code)
 ├── sweep.toml                 # Parameter sweep specification (TOML-driven)
 ├── generate_configs.py        # Cartesian product config generator
 ├── generate_commands.py       # TAMULauncher: one command per sim → commands.txt
-├── submit.slurm               # SLURM job array (legacy: hybrid 10 sims/task)
+├── submit.slurm               # SLURM job array (hybrid 30 sims/task)
 ├── submit_tamulauncher.slurm  # TAMULauncher submit (no job array limit)
 ├── run_batch.py               # Per-batch runner with per-sim timing (SLURM array)
 ├── run_sim.py                 # Single-sim runner with timing JSON (TAMULauncher)
@@ -50,7 +51,7 @@ SugarCluster/                  # Main implementation (all new code)
 ├── configs/                   # 656 generated .config JSON files
 ├── commands.txt               # TAMULauncher commands file (one line per sim)
 ├── data/                      # 656 simulation JSON log outputs
-├── timing/                    # Per-batch CSVs (SLURM) and downloaded per-sim JSONs (TAMULauncher)
+├── timing/                    # Per-batch CSVs (SLURM) and downloaded per-sim JSONs (TAMULauncher). Files generated at root directory on cluster and then pulled here.
 │   └── timing_sim_*.json      # timing_sim_<job_id>.json — written in root on cluster, pulled here
 ├── results/                   # All analysis outputs (CSVs)
 ├── plots/                     # 7 presentation figures (PNG)
@@ -66,7 +67,7 @@ SugarCluster/                  # Main implementation (all new code)
 | :--- | :--- | :--- | :--- |
 | `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 1,520 minimal JSON configs |
 | `generate_commands.py` | `jobs.csv` | `commands.txt` | TAMULauncher: one command line per sim |
-| `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | **Legacy** SLURM job array |
+| `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | SLURM job array |
 | `submit_tamulauncher.slurm` | `commands.txt` | `data/*.json`, `timing_sim_*.json` | **TAMULauncher** submit (no array limit) |
 | `run_batch.py` | config file | JSON log + timing CSV | Per-batch runner (SLURM job array) |
 | `run_sim.py` | `jobs.csv`, config | JSON log + `timing_sim_<id>.json` | Single-sim runner (TAMULauncher worker) |

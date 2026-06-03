@@ -1,1 +1,0 @@
-{"job_id": 832, "run_type": "disease", "framework": "negativeBentham", "diseaseTransmissionChance": "0.6", "diseaseTagStringLength": "5", "agentImmuneSystemLength": "35", "diseaseSugarMetabolismPenalty": "0", "start_time": "2026-06-02T03:41:54.634923+00:00", "end_time": "2026-06-02T03:42:06.096035+00:00", "duration_seconds": 11.5, "peak_memory_mb": 30.93, "status": "OK"}

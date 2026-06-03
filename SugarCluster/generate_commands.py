@@ -89,6 +89,7 @@ def main() -> int:
             f"python3 {run_sim_fwd}"
             f" --project-dir {project_dir_fwd}"
             f" --job-id {job_id}"
+            f" --backend tamu"
         )
         lines.append(cmd)
 
@@ -101,11 +102,7 @@ def main() -> int:
         f.write("\n".join(lines) + "\n")
 
     print(f"Generated {len(lines)} commands → {outfile}")
-    print(
-        f"Submit with:\n"
-        f"  PROJECT_DIR={project_dir_fwd} \\\n"
-        f"      sbatch submit_tamulauncher.slurm"
-    )
+    print("Submit with: make submit-tamu ACCOUNT=<account>")
     return 0
 
 

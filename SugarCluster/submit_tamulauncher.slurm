@@ -22,10 +22,10 @@
 #   - Use `tamulauncher --norestart commands.txt` to force a fresh start.
 
 #SBATCH --job-name=sugarscape-tamulauncher
-#SBATCH --nodes=8
-#SBATCH --ntasks-per-node=16
-#SBATCH --time=01:00:00
-#SBATCH --mem=8G         # 48 sims × ~36 MB max peak = ~1.7 GB; 8G gives 4× headroom
+#SBATCH --nodes=20
+#SBATCH --ntasks-per-node=12
+#SBATCH --time=00:30:00
+#SBATCH --mem=12G
 #SBATCH --output=logs/tamulauncher-%j.out
 #SBATCH --error=logs/tamulauncher-%j.err
 

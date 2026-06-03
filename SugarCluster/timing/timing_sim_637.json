@@ -1,1 +1,0 @@
-{"job_id": 637, "run_type": "disease", "framework": "egoist", "diseaseTransmissionChance": "0.6", "diseaseTagStringLength": "5", "agentImmuneSystemLength": "10", "diseaseSugarMetabolismPenalty": "0.25", "start_time": "2026-06-02T03:41:36.405286+00:00", "end_time": "2026-06-02T03:41:36.607293+00:00", "duration_seconds": 0.2, "peak_memory_mb": 25.05, "status": "OK"}

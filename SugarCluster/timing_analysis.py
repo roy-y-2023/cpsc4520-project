@@ -1,54 +1,60 @@
-"""Timing analysis — supports both SLURM job-array and TAMULauncher modes.
+"""Timing analysis — reads per-sim JSON timing files for both backends.
 
-Outputs (written only when the relevant data exists):
-  results/timing_summary_slurm.csv          — SLURM job-array summary stats
-  results/timing_summary_tamulauncher.csv   — TAMULauncher summary stats
-  results/cumulative_real_slurm.csv         — actual per-task completion curve (SLURM)
-  results/cumulative_real_tamulauncher.csv  — actual per-sim completion curve (TAMULauncher)
-  results/cumulative_theoretical_slurm.csv  — theoretical perfect-parallelism (SLURM)
-  results/cumulative_theoretical_tamulauncher.csv
-  results/node_distribution.csv            — SLURM node load (SLURM only)
-  results/timing_summary.csv               — backward-compat (SLURM if available, else TL)
-  results/cumulative_real.csv              — backward-compat
-  results/cumulative_theoretical.csv       — backward-compat
+Data sources (pulled locally via `make pull_data`):
+  timing/timing_sim_*_slurm.json  — SLURM array backend (run_batch.py → run_sim.py)
+  timing/timing_sim_*_tamu.json   — TAMULauncher backend (run_sim.py direct)
+  submit_time_slurm.txt           — sbatch submission timestamp (written by make submit-slurm)
+  submit_time_tamu.txt            — sbatch submission timestamp (written by make submit-tamu)
+
+Outputs written to results/:
+  timing_summary_slurm.csv          — per-backend summary stats
+  timing_summary_tamu.csv
+  cumulative_real_slurm.csv         — completion curve (t=0 at submission)
+  cumulative_real_tamu.csv
+  cumulative_theoretical_slurm.csv  — ideal infinite-parallelism curve
+  cumulative_theoretical_tamu.csv
+  timing_summary.csv                — backward-compat alias (tamu preferred, else slurm)
+  cumulative_real.csv               — backward-compat alias
+  cumulative_theoretical.csv        — backward-compat alias
 """
 
 import json
-import re
+import shutil
 from pathlib import Path
+import datetime
 
 import pandas as pd
 
 PROJECT = Path(__file__).resolve().parent
-SLURM_CSV = PROJECT / "results" / "slurm_timing.csv"
 TIMING_DIR = PROJECT / "timing"
 OUT_DIR = PROJECT / "results"
 
 
-# ── Data loaders ─────────────────────────────────────────────────────────────
+# ── Data loaders ──────────────────────────────────────────────────────────────
 
-def load_slurm_timing():
-    """Load SLURM job-array metadata (from parse_slurm.py → slurm_timing.csv)."""
-    if not SLURM_CSV.exists():
+def load_submit_time(backend: str) -> "datetime.datetime | None":
+    """Read the sbatch submission timestamp from submit_time_<backend>.txt.
+
+    Falls back to None if the file doesn't exist, in which case callers should
+    use min(start_time) across per-sim records instead.
+    """
+    path = PROJECT / f"submit_time_{backend}.txt"
+    if not path.exists():
         return None
-    df = pd.read_csv(SLURM_CSV)
-    df["start_time"] = pd.to_datetime(df["start_time"])
-    df["end_time"] = pd.to_datetime(df["end_time"])
-    return df
-
-
-def load_sim_timing_legacy():
-    """Load per-sim timing from timing_*.csv (written by run_batch.py, SLURM mode)."""
-    files = sorted(TIMING_DIR.glob("timing_*.csv"))
-    if not files:
+    try:
+        raw = path.read_text(encoding="utf-8").strip()
+        # Format written by `date -u +"%Y-%m-%dT%H:%M:%SZ"`
+        return datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except Exception as e:
+        print(f"WARNING: Could not parse {path}: {e}")
         return None
-    return pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 
 
-def load_sim_timing_tamulauncher():
-    """Load per-sim timing from timing_sim_*.json (written by run_sim.py, TAMULauncher)."""
+def load_sim_timing(backend: str) -> "pd.DataFrame | None":
+    """Load per-sim timing JSON files for the given backend ('slurm' or 'tamu')."""
+    pattern = f"timing_sim_*_{backend}.json"
     records = []
-    for p in sorted(TIMING_DIR.glob("timing_sim_*.json")):
+    for p in sorted(TIMING_DIR.glob(pattern)):
         try:
             records.append(json.loads(p.read_text()))
         except Exception:
@@ -62,169 +68,36 @@ def load_sim_timing_tamulauncher():
     return df
 
 
-def get_tamulauncher_job_elapsed():
-    """Parse the elapsed seconds of the COMPLETED TAMULauncher job from slurm_tamulauncher_full.txt."""
-    path = PROJECT / "slurm_tamulauncher_full.txt"
-    if not path.exists():
-        return None
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if "COMPLETED" in line and "sugarscape-tamulaun" in line:
-                parts = line.split("COMPLETED", 1)[1].split()
-                if parts:
-                    elapsed_str = parts[0]
-                    t_parts = elapsed_str.split(":")
-                    if len(t_parts) == 3:
-                        h, m, s = t_parts
-                        return int(h) * 3600 + int(m) * 60 + int(s)
-                    elif len(t_parts) == 2:
-                        m, s = t_parts
-                        return int(m) * 60 + int(s)
-    return None
+# ── Curve builders ────────────────────────────────────────────────────────────
 
+def compute_cumulative_real(
+    sim_df: pd.DataFrame,
+    t_zero: "datetime.datetime | None",
+) -> pd.DataFrame:
+    """Cumulative sims completed vs wall time.
 
-def load_any_sim_timing():
-    """Union of both per-sim timing sources — used by aggregate.py and plots.py."""
-    chunks = []
-    legacy = load_sim_timing_legacy()
-    tamu = load_sim_timing_tamulauncher()
-    if legacy is not None:
-        chunks.append(legacy)
-    if tamu is not None:
-        chunks.append(tamu)
-    if not chunks:
-        return pd.DataFrame()
-    combined = pd.concat(chunks, ignore_index=True)
-    if "job_id" in combined.columns:
-        combined = combined.drop_duplicates(subset=["job_id"], keep="first")
-    return combined
-
-
-# ── SLURM job-array mode ──────────────────────────────────────────────────────
-
-def get_sims_per_job():
-    submit_slurm = PROJECT / "submit.slurm"
-    if submit_slurm.exists():
-        content = submit_slurm.read_text(encoding="utf-8")
-        m = re.search(r'SIMS_PER_JOB="\$\{SIMS_PER_JOB:-(\d+)\}"', content)
-        if m:
-            return int(m.group(1))
-    return 30
-
-
-def compute_batch_durations(sim_df):
-    sims_per_job = get_sims_per_job()
-    sim_df = sim_df.copy()
-    sim_df["batch_id"] = ((sim_df["job_id"] - 1) // sims_per_job) + 1
-    return sim_df.groupby("batch_id").agg(
-        sim_count=("job_id", "count"),
-        total_sim_seconds=("duration_seconds", "sum"),
-        max_sim=("duration_seconds", "max"),
-    ).reset_index()
-
-
-def compute_cumulative_real_slurm(slurm_df):
-    """Cumulative sims complete vs wall time, from SLURM task end-times."""
-    sims_per_job = get_sims_per_job()
-    df = slurm_df.sort_values("end_time").reset_index(drop=True)
-    start = slurm_df["start_time"].min()
-    df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
-    df["cum_sims"] = (df.index + 1) * sims_per_job
-    
-    # Prepend t_seconds=0, cum_sims=0 to represent the origin / job startup
-    zero_row = pd.DataFrame([{"t_seconds": 0.0, "cum_sims": 0}])
-    df_result = pd.concat([zero_row, df[["t_seconds", "cum_sims"]]], ignore_index=True)
-    return df_result
-
-
-def compute_cumulative_theoretical_slurm(sim_df):
-    """Theoretical: batch total time sorted ascending (sequential perfect dispatch)."""
-    batches = compute_batch_durations(sim_df)
-    batches = batches.sort_values("total_sim_seconds")
-    batches["cum_sims"] = batches["sim_count"].cumsum()
-    return batches[["total_sim_seconds", "cum_sims"]].rename(
-        columns={"total_sim_seconds": "t_seconds"}
-    )
-
-
-def analyze_slurm(slurm_df, sim_df):
-    first_start = slurm_df["start_time"].min()
-    last_end = slurm_df["end_time"].max()
-    total_wall = (last_end - first_start).total_seconds()
-    total_core = slurm_df["elapsed_seconds"].sum()
-    total_sim = sim_df["duration_seconds"].sum()
-    num_nodes = slurm_df["node"].nunique()
-    num_tasks = len(slurm_df)
-
-    batch = compute_batch_durations(sim_df)
-    slurm_rename = slurm_df[["task_id", "elapsed_seconds"]].rename(
-        columns={"task_id": "batch_id", "elapsed_seconds": "slurm_elapsed"}
-    )
-    batch = batch.merge(slurm_rename, on="batch_id", how="left")
-    batch["overhead_seconds"] = batch["slurm_elapsed"] - batch["total_sim_seconds"]
-    batch["overhead_pct"] = batch["overhead_seconds"] / batch["slurm_elapsed"] * 100
-
-    real_cum = compute_cumulative_real_slurm(slurm_df)
-    theo_cum = compute_cumulative_theoretical_slurm(sim_df)
-
-    tasks_per_node = slurm_df.groupby("node").size().reset_index(name="count")
-    node_counts = (
-        tasks_per_node.groupby("count").size()
-        .reset_index(name="num_nodes")
-        .rename(columns={"count": "tasks_per_node"})
-        .sort_values("tasks_per_node")
-    )
-
-    summary = {
-        "mode": "slurm_array",
-        "total_sims": len(sim_df),
-        "total_slurm_tasks": num_tasks,
-        "num_nodes": num_nodes,
-        "sims_per_task": get_sims_per_job(),
-        "total_wall_seconds": total_wall,
-        "total_wall_minutes": total_wall / 60,
-        "total_core_seconds": total_core,
-        "total_sim_seconds": total_sim,
-        "avg_slurm_elapsed": slurm_df["elapsed_seconds"].mean(),
-        "min_slurm_elapsed": slurm_df["elapsed_seconds"].min(),
-        "max_slurm_elapsed": slurm_df["elapsed_seconds"].max(),
-        "avg_sim_duration": sim_df["duration_seconds"].mean(),
-        "sims_per_wall_hour": len(sim_df) / (total_wall / 3600),
-        "avg_batch_overhead_pct": batch["overhead_pct"].mean(),
-        "avg_batch_overhead_s": batch["overhead_seconds"].mean(),
-        "parallelism_factor": total_sim / total_wall,
-        "total_duration_hhmmss": f"{int(total_wall // 60)}:{int(total_wall % 60):02d}",
-    }
-    return summary, real_cum, theo_cum, node_counts
-
-
-# ── TAMULauncher mode ─────────────────────────────────────────────────────────
-
-def compute_cumulative_real_tamulauncher(sim_df):
-    """Cumulative sims complete vs wall time, from per-sim end_time timestamps."""
+    t=0 is the sbatch submission time (from submit_time_*.txt).
+    If unavailable, t=0 falls back to min(start_time) across all sims.
+    """
     df = sim_df.dropna(subset=["end_time"]).copy()
     df = df.sort_values("end_time").reset_index(drop=True)
-    
-    elapsed = get_tamulauncher_job_elapsed()
-    if elapsed is not None:
-        max_end = df["end_time"].max()
-        df["t_seconds"] = (df["end_time"] - max_end).dt.total_seconds() + elapsed
-        print(f"[timing_analysis] Aligned TAMULauncher timeline using job elapsed duration of {elapsed}s.")
-    else:
-        start = sim_df["start_time"].dropna().min()
-        df["t_seconds"] = (df["end_time"] - start).dt.total_seconds()
-        print(f"[timing_analysis] WARNING: slurm_tamulauncher_full.txt not found. Using first simulation start time.")
-        
+
+    if t_zero is None:
+        if "start_time" in df.columns and df["start_time"].notna().any():
+            t_zero = df["start_time"].min()
+        else:
+            t_zero = df["end_time"].min()
+        print("  WARNING: submit_time_*.txt not found — using first sim start_time as t=0.")
+
+    df["t_seconds"] = (df["end_time"] - t_zero).dt.total_seconds()
     df["cum_sims"] = range(1, len(df) + 1)
-    
-    # Prepend t_seconds=0, cum_sims=0 to represent the origin / job startup
+
     zero_row = pd.DataFrame([{"t_seconds": 0.0, "cum_sims": 0}])
-    df_result = pd.concat([zero_row, df[["t_seconds", "cum_sims"]]], ignore_index=True)
-    return df_result
+    return pd.concat([zero_row, df[["t_seconds", "cum_sims"]]], ignore_index=True)
 
 
-def compute_cumulative_theoretical_tamulauncher(sim_df):
-    """Theoretical: infinite-parallelism — all sims start at t=0, complete at duration."""
+def compute_cumulative_theoretical(sim_df: pd.DataFrame) -> pd.DataFrame:
+    """Theoretical infinite-parallelism curve: all sims start at t=0."""
     df = sim_df[["duration_seconds"]].dropna().copy()
     df = df.sort_values("duration_seconds").reset_index(drop=True)
     df["cum_sims"] = range(1, len(df) + 1)
@@ -233,50 +106,64 @@ def compute_cumulative_theoretical_tamulauncher(sim_df):
     )
 
 
-def analyze_tamulauncher(sim_df):
+# ── Analysis ──────────────────────────────────────────────────────────────────
+
+def analyze(
+    sim_df: pd.DataFrame,
+    submit_time: "datetime.datetime | None",
+    backend: str,
+) -> "tuple[dict, pd.DataFrame, pd.DataFrame]":
+    """Compute summary stats and cumulative curves for one backend.
+
+    total_wall_seconds spans from sbatch submission to last sim completion,
+    capturing queue wait + actual execution. If submit_time is unavailable,
+    wall time is measured from first sim start to last sim end.
+    """
     has_timestamps = (
         "start_time" in sim_df.columns and sim_df["start_time"].notna().any()
+        and "end_time" in sim_df.columns and sim_df["end_time"].notna().any()
     )
-    elapsed = get_tamulauncher_job_elapsed()
-    
-    if elapsed is not None:
-        total_wall = float(elapsed)
+
+    # Determine t=0 for wall-clock measurements
+    if submit_time is not None:
+        t_zero = submit_time
     elif has_timestamps:
-        first_start = sim_df["start_time"].min()
-        last_end = sim_df["end_time"].dropna().max()
-        total_wall = (last_end - first_start).total_seconds()
+        t_zero = sim_df["start_time"].dropna().min()
     else:
-        # Fallback: use sum of durations / estimated parallelism
+        t_zero = None
+
+    # Total wall time: submission → last end
+    if t_zero is not None and has_timestamps:
+        last_end = sim_df["end_time"].dropna().max()
+        total_wall = (last_end - t_zero).total_seconds()
+    else:
         total_wall = sim_df["duration_seconds"].max()
 
     total_sim = sim_df["duration_seconds"].sum()
 
     real_cum = (
-        compute_cumulative_real_tamulauncher(sim_df)
+        compute_cumulative_real(sim_df, t_zero)
         if has_timestamps
-        else compute_cumulative_theoretical_tamulauncher(sim_df)
+        else compute_cumulative_theoretical(sim_df)
     )
-    theo_cum = compute_cumulative_theoretical_tamulauncher(sim_df)
+    theo_cum = compute_cumulative_theoretical(sim_df)
 
     summary = {
-        "mode": "tamulauncher",
+        "backend": backend,
         "total_sims": len(sim_df),
-        "total_slurm_tasks": 1,
-        "num_nodes": None,
-        "sims_per_task": None,
         "total_wall_seconds": total_wall,
-        "total_wall_minutes": total_wall / 60,
-        "total_core_seconds": total_sim,  # each sim = 1 core
+        "total_wall_minutes": round(total_wall / 60, 2),
         "total_sim_seconds": total_sim,
-        "avg_slurm_elapsed": None,
-        "min_slurm_elapsed": None,
-        "max_slurm_elapsed": None,
-        "avg_sim_duration": sim_df["duration_seconds"].mean(),
-        "sims_per_wall_hour": len(sim_df) / (total_wall / 3600) if total_wall > 0 else None,
-        "avg_batch_overhead_pct": None,
-        "avg_batch_overhead_s": None,
-        "parallelism_factor": total_sim / total_wall if total_wall > 0 else None,
+        "avg_sim_duration": round(sim_df["duration_seconds"].mean(), 2),
+        "min_sim_duration": round(sim_df["duration_seconds"].min(), 2),
+        "max_sim_duration": round(sim_df["duration_seconds"].max(), 2),
+        "sims_per_wall_hour": round(len(sim_df) / (total_wall / 3600), 1) if total_wall > 0 else None,
+        "parallelism_factor": round(total_sim / total_wall, 2) if total_wall > 0 else None,
         "total_duration_hhmmss": f"{int(total_wall // 60)}:{int(total_wall % 60):02d}",
+        "submit_time": submit_time.isoformat() if submit_time else None,
+        "wall_includes_queue_wait": submit_time is not None,
+        "ok_count": int((sim_df["status"] == "OK").sum()) if "status" in sim_df.columns else None,
+        "fail_count": int((sim_df["status"] != "OK").sum()) if "status" in sim_df.columns else None,
     }
     return summary, real_cum, theo_cum
 
@@ -286,98 +173,69 @@ def analyze_tamulauncher(sim_df):
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    slurm_df = load_slurm_timing()
-    sim_legacy = load_sim_timing_legacy()
-    sim_tamu = load_sim_timing_tamulauncher()
-
-    slurm_done = False
-    tamu_done = False
     primary_real = None
     primary_theo = None
+    primary_summary_path = None
 
-    # ── SLURM job-array analysis ──────────────────────────────────
-    if slurm_df is not None and sim_legacy is not None:
-        print("[timing_analysis] SLURM job-array mode: found slurm_timing.csv + timing_*.csv")
-        summary, real_cum, theo_cum, node_counts = analyze_slurm(slurm_df, sim_legacy)
+    for backend in ("slurm", "tamu"):
+        sim_df = load_sim_timing(backend)
+        if sim_df is None:
+            print(f"[timing_analysis] {backend}: no timing_sim_*_{backend}.json found — skipping")
+            continue
 
-        pd.DataFrame([summary]).to_csv(OUT_DIR / "timing_summary_slurm.csv", index=False)
-        real_cum.to_csv(OUT_DIR / "cumulative_real_slurm.csv", index=False)
-        theo_cum.to_csv(OUT_DIR / "cumulative_theoretical_slurm.csv", index=False)
-        node_counts.to_csv(OUT_DIR / "node_distribution.csv", index=False)
+        submit_time = load_submit_time(backend)
+        if submit_time:
+            print(f"[timing_analysis] {backend}: submit_time = {submit_time.isoformat()}")
+        else:
+            print(f"[timing_analysis] {backend}: submit_time_{backend}.txt not found — using first sim start_time")
 
-        print("=== SLURM Job-Array Timing Summary ===")
-        _print_summary(summary, slurm_df)
+        summary, real_cum, theo_cum = analyze(sim_df, submit_time, backend)
 
-        primary_real = real_cum
-        primary_theo = theo_cum
-        slurm_done = True
-    else:
-        if slurm_df is None:
-            print("[timing_analysis] SLURM mode skipped: results/slurm_timing.csv not found")
-        if sim_legacy is None:
-            print("[timing_analysis] SLURM mode skipped: no timing/timing_*.csv files")
+        tag = backend
+        summary_path = OUT_DIR / f"timing_summary_{tag}.csv"
+        pd.DataFrame([summary]).to_csv(summary_path, index=False)
+        real_cum.to_csv(OUT_DIR / f"cumulative_real_{tag}.csv", index=False)
+        theo_cum.to_csv(OUT_DIR / f"cumulative_theoretical_{tag}.csv", index=False)
 
-    # ── TAMULauncher analysis ─────────────────────────────────────
-    if sim_tamu is not None:
-        print("[timing_analysis] TAMULauncher mode: found timing_sim_*.json")
-        summary, real_cum, theo_cum = analyze_tamulauncher(sim_tamu)
-
-        pd.DataFrame([summary]).to_csv(OUT_DIR / "timing_summary_tamulauncher.csv", index=False)
-        real_cum.to_csv(OUT_DIR / "cumulative_real_tamulauncher.csv", index=False)
-        theo_cum.to_csv(OUT_DIR / "cumulative_theoretical_tamulauncher.csv", index=False)
-
-        print("=== TAMULauncher Timing Summary ===")
         _print_summary(summary)
 
-        if primary_real is None:
+        # tamu preferred for backward-compat aliases; slurm is fallback
+        if primary_real is None or backend == "tamu":
             primary_real = real_cum
             primary_theo = theo_cum
-        tamu_done = True
-    else:
-        print("[timing_analysis] TAMULauncher mode skipped: no timing_sim_*.json files")
+            primary_summary_path = summary_path
 
-    # ── Backward-compat files (used by plots.py) ──────────────────
+    # Backward-compat aliases consumed by plots.py
     if primary_real is not None:
         primary_real.to_csv(OUT_DIR / "cumulative_real.csv", index=False)
         primary_theo.to_csv(OUT_DIR / "cumulative_theoretical.csv", index=False)
-
-    # timing_summary.csv: prefer SLURM summary if available
-    primary_summary_path = (
-        OUT_DIR / "timing_summary_slurm.csv" if slurm_done
-        else OUT_DIR / "timing_summary_tamulauncher.csv" if tamu_done
-        else None
-    )
-    if primary_summary_path and primary_summary_path.exists():
-        import shutil
         shutil.copy(primary_summary_path, OUT_DIR / "timing_summary.csv")
+    else:
+        print(
+            "ERROR: No timing data found. Pull timing JSONs first:\n"
+            "  make pull_data"
+        )
 
-    if not slurm_done and not tamu_done:
-        print("ERROR: No timing data found in either timing_*.csv or timing_sim_*.json. "
-              "Run parse_slurm.py first (SLURM mode) or check TAMULauncher output.")
 
-
-def _print_summary(summary: dict, slurm_df=None):
+def _print_summary(summary: dict) -> None:
+    backend = summary["backend"].upper()
     tw = summary["total_wall_seconds"]
     ts = summary["total_sim_seconds"]
-    print(f"  Total sims:         {summary['total_sims']}")
-    print(f"  SLURM tasks:        {summary['total_slurm_tasks']}")
-    nodes = summary.get("num_nodes")
-    print(f"  ACES nodes used:    {nodes if nodes is not None else 'N/A (TAMULauncher)'}")
-    print(f"  Total wall time:    {tw:.0f}s ({tw/60:.1f} min)")
-    print(f"  Total core-seconds: {summary['total_core_seconds']:.0f}s")
-    print(f"  Total sim-seconds:  {ts:.0f}s ({ts/60:.1f} min)")
-    tph = summary.get("sims_per_wall_hour")
-    if tph:
-        print(f"  Throughput:         {tph:.0f} sims/wall-hour")
-    print(f"  Avg sim duration:   {summary['avg_sim_duration']:.1f}s")
-    if slurm_df is not None and summary.get("avg_slurm_elapsed"):
-        print(f"  Avg task elapsed:   {summary['avg_slurm_elapsed']:.1f}s")
-        print(f"  Avg batch overhead: {summary['avg_batch_overhead_s']:.1f}s "
-              f"({summary['avg_batch_overhead_pct']:.1f}%)")
-    pf = summary.get("parallelism_factor")
-    if pf:
-        print(f"  Parallelism factor: {pf:.1f}x")
-        print(f"  Serial equivalent:  {ts:.0f}s on 1 core vs {tw:.0f}s wall")
+    print(f"=== {backend} Timing Summary ===")
+    print(f"  Total sims:          {summary['total_sims']}")
+    if summary.get("ok_count") is not None:
+        print(f"  OK / Failed:         {summary['ok_count']} / {summary['fail_count']}")
+    print(f"  Total wall time:     {tw:.0f}s ({tw/60:.1f} min)"
+          + (" [incl. queue wait]" if summary.get("wall_includes_queue_wait") else ""))
+    print(f"  Total sim-seconds:   {ts:.0f}s ({ts/60:.1f} min)")
+    if summary.get("sims_per_wall_hour"):
+        print(f"  Throughput:          {summary['sims_per_wall_hour']:.0f} sims/wall-hour")
+    print(f"  Avg sim duration:    {summary['avg_sim_duration']:.1f}s")
+    print(f"  Min/Max sim:         {summary['min_sim_duration']:.1f}s / {summary['max_sim_duration']:.1f}s")
+    if summary.get("parallelism_factor"):
+        print(f"  Parallelism factor:  {summary['parallelism_factor']:.1f}x")
+    if summary.get("submit_time"):
+        print(f"  Submission time:     {summary['submit_time']}")
 
 
 if __name__ == "__main__":

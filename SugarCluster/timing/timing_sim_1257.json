@@ -1,1 +1,0 @@
-{"job_id": 1257, "run_type": "disease", "framework": "temperance", "diseaseTransmissionChance": "0.6", "diseaseTagStringLength": "21", "agentImmuneSystemLength": "35", "diseaseSugarMetabolismPenalty": "0.5", "start_time": "2026-06-02T03:41:49.811876+00:00", "end_time": "2026-06-02T03:41:50.065256+00:00", "duration_seconds": 0.3, "peak_memory_mb": 25.13, "status": "OK"}

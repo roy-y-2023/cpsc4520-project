@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Run a batch of Sugarscape simulations sequentially within one SLURM task.
 
+Each simulation is delegated to run_sim.py (which handles timing, memory
+measurement, and writing timing_sim_<job_id>_slurm.json).
+
 Usage:
     python run_batch.py --project-dir /path/to/project --start-id 1 --end-id 10
 """
@@ -32,15 +35,14 @@ def main() -> int:
     args = parser.parse_args()
 
     cluster_dir = os.path.join(args.project_dir, "SugarCluster")
-    sugarscape_dir = os.path.join(args.project_dir, "sugarscape")
     manifest = os.path.join(cluster_dir, "jobs.csv")
-    sugarscape_py = os.path.join(sugarscape_dir, "sugarscape.py")
+    run_sim_py = os.path.join(cluster_dir, "run_sim.py")
 
     if not os.path.exists(manifest):
         print(f"ERROR: Manifest not found: {manifest}", file=sys.stderr)
         return 1
-    if not os.path.exists(sugarscape_py):
-        print(f"ERROR: sugarscape.py not found: {sugarscape_py}", file=sys.stderr)
+    if not os.path.exists(run_sim_py):
+        print(f"ERROR: run_sim.py not found: {run_sim_py}", file=sys.stderr)
         return 1
 
     with open(manifest, newline="") as f:
@@ -55,91 +57,33 @@ def main() -> int:
         print(f"No jobs in range {start_id}–{end_id} (total={total_jobs})")
         return 0
 
-    cwd = os.getcwd()
-    param_names = ["diseaseTransmissionChance", "diseaseTagStringLength",
-                   "agentImmuneSystemLength", "diseaseSugarMetabolismPenalty"]
     errors = []
-    timing = []
     batch_start = time.perf_counter()
 
     for job_id in range(start_id, end_id + 1):
         row = jobs[job_id - 1]
-        config_rel = row["config_path"]
-        config_path = os.path.join(cluster_dir, config_rel)
         label = f"[{job_id}/{total_jobs}] {row['run_type']} {row['framework']}"
-
-        if not os.path.exists(config_path):
-            msg = f"{label} SKIPPED — config not found: {config_path}"
-            print(msg, file=sys.stderr)
-            errors.append({"job_id": job_id, "config_path": config_rel, "reason": "CONFIG_MISSING"})
-            continue
-
-        print(f"{label} running {config_rel}")
+        print(f"{label} dispatching to run_sim.py")
         sys.stdout.flush()
 
-        sim_start = time.perf_counter()
-        p = subprocess.Popen(
-            [sys.executable, sugarscape_py, "--conf", str(config_path)],
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
+        result = subprocess.run(
+            [
+                sys.executable, run_sim_py,
+                "--project-dir", args.project_dir,
+                "--job-id", str(job_id),
+                "--backend", "slurm",
+            ],
+            # Inherit cwd so sugarscape output JSONs land in SugarCluster/
         )
-
-        peak_rss_kb = 0
-        while True:
-            ret = p.poll()
-            try:
-                with open(f"/proc/{p.pid}/status") as f:
-                    for line in f:
-                        if line.startswith("VmRSS:"):
-                            rss = int(line.split()[1])
-                            if rss > peak_rss_kb:
-                                peak_rss_kb = rss
-                            break
-            except Exception:
-                pass
-            if ret is not None:
-                break
-            time.sleep(0.05)
-
-        stdout, stderr = p.communicate()
-        sim_end = time.perf_counter()
-        duration = sim_end - sim_start
-        peak_memory_mb = round(peak_rss_kb / 1024.0, 2)
-
-        class CompletedProcess:
-            def __init__(self, returncode, stdout, stderr):
-                self.returncode = returncode
-                self.stdout = stdout
-                self.stderr = stderr
-
-        result = CompletedProcess(p.returncode, stdout, stderr)
 
         if result.returncode != 0:
             status = f"EXIT_{result.returncode}"
-            msg = (
-                f"{label} FAILED ({status}) in {duration:.1f}s (Peak Mem: {peak_memory_mb:.2f}MB)\n"
-                f"  stdout: {result.stdout.strip()[:200]}\n"
-                f"  stderr: {result.stderr.strip()[:200]}"
-            )
-            print(msg, file=sys.stderr)
-            errors.append({"job_id": job_id, "config_path": config_rel, "reason": status})
+            print(f"{label} FAILED ({status})", file=sys.stderr)
+            errors.append({"job_id": job_id, "config_path": row.get("config_path", ""), "reason": status})
         else:
-            status = "OK"
-            print(f"{label} OK ({duration:.1f}s, Peak Mem: {peak_memory_mb:.2f}MB)")
+            print(f"{label} OK")
 
-        timing.append({
-            "job_id": job_id,
-            "run_type": row["run_type"],
-            "framework": row["framework"],
-            **{p: row.get(p, "") for p in param_names},
-            "duration_seconds": round(duration, 1),
-            "peak_memory_mb": peak_memory_mb,
-            "status": status,
-        })
-
-    # Write errors
+    # Write retry list on errors
     if errors:
         print(f"\n*** Batch {start_id}–{end_id} completed with {len(errors)} error(s) ***")
         retry_path = os.path.join(cluster_dir, f"retry_{start_id}_{end_id}.csv")
@@ -149,23 +93,15 @@ def main() -> int:
             writer.writerows(errors)
         print(f"Retry list: {retry_path}")
 
-    # Write timing
-    timing_path = os.path.join(cluster_dir, f"timing_{start_id}_{end_id}.csv")
-    if timing:
-        fieldnames = list(timing[0].keys())
-        with open(timing_path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(timing)
-        print(f"Timing written: {timing_path}")
-
     batch_end = time.perf_counter()
     batch_duration = batch_end - batch_start
     run_count = end_id - start_id + 1
     avg = batch_duration / run_count if run_count > 0 else 0
-    print(f"\n*** Batch {start_id}–{end_id} complete. "
-          f"Total: {batch_duration:.1f}s  |  Per sim: {avg:.1f}s avg  |  "
-          f"{len(errors)} error(s) ***")
+    print(
+        f"\n*** Batch {start_id}–{end_id} complete. "
+        f"Total: {batch_duration:.1f}s  |  Per sim: {avg:.1f}s avg  |  "
+        f"{len(errors)} error(s) ***"
+    )
 
     return 0
 

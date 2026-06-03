@@ -201,7 +201,7 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 | :--- | :--- |
 | **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims → then switched to TAMULauncher |
 | **ACES global concurrency cap** (40 jobs) | TAMULauncher bypasses this entirely |
-| **TAMULauncher queue wait** | Large resource ask (48 CPU per node) → ~2 hour queue time |
+| **TAMULauncher queue wait** | Large resource ask (48 CPU or 16GB per node) → ~2 hour queue time |
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |
@@ -232,11 +232,10 @@ sweep.toml          →    generate_configs.py    →    1,520 configs
 
 ## Future Work
 
-1. **Reduce TAMULauncher queue wait** — request fewer nodes, more tasks/node (e.g. 2 nodes × 64/node)
-2. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
-3. **Multiple seeds** — 30+ seeds per config for statistical significance; at 91K sims/hr this is now tractable
-4. **Interactive dashboard** — real-time monitoring while jobs run on ACES
-5. **Containerized deployment** — Singularity/Docker for zero-install cluster portability
+1. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
+2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 91K sims/hr this is now tractable
+3. **Interactive dashboard** — real-time monitoring while jobs run on ACES
+4. **Containerized deployment** — Singularity/Docker for zero-install cluster portability
 
 ---
 

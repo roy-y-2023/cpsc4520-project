@@ -11,7 +11,7 @@ import csv
 import json
 import os
 import sys
-import tomli as tomllib
+import tomllib
 from itertools import product
 
 

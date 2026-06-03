@@ -17,14 +17,14 @@ frameworks = [
 ]
 
 [disease]
-startingDiseases = 25
-startingDiseasesPerAgent = [10, 10]
+startingDiseases = 5
+startingDiseasesPerAgent = [5, 5]
 
 [disease.sweep]
-diseaseTransmissionChance = [0.3, 0.6, 1.0]
+diseaseTransmissionChance = [0.05, 0.1, 0.3, 0.6, 1.0]
 diseaseTagStringLength = [5, 13, 21]
 agentImmuneSystemLength = [10, 35, 60]
-diseaseSugarMetabolismPenalty = [0, 0.1, 0.25, 0.5, 1, 2, 3]
+diseaseSugarMetabolismPenalty = [0, 0.001, 0.0025, 0.005, 0.01, 0.1, 0.25, 0.5]
 
 [baseline]
 enabled = true

@@ -17,40 +17,67 @@ def load_jobs():
     return df
 
 
-def load_timing():
-    """Load per-sim timing from both sources and return a unified DataFrame.
+def _load_timing_jsons(pattern: str) -> "pd.DataFrame":
+    """Load all timing JSONs matching *pattern* in the TIMING directory."""
+    records = []
+    for p in sorted(TIMING.glob(pattern)):
+        try:
+            with open(p) as f:
+                records.append(json.load(f))
+        except Exception:
+            pass
+    return pd.DataFrame(records) if records else pd.DataFrame()
 
-    Sources (union of whichever exist):
-      - timing/timing_*.csv  — legacy batch CSVs written by run_batch.py (SLURM job array)
-      - timing_sim_*.json   — per-sim JSON files written by run_sim.py (TAMULauncher)
+
+def load_timing() -> "pd.DataFrame":
+    """Load per-sim timing from both backends and return a unified DataFrame.
+
+    File locations (pulled from cluster into local timing/ via pull_data):
+      - timing/timing_sim_<id>_slurm.json — SLURM array backend (run_batch.py → run_sim.py)
+      - timing/timing_sim_<id>_tamu.json  — TAMULauncher backend (run_sim.py direct)
+      - timing/timing_*.csv               — legacy batch CSVs (backward compat only)
+
+    When the same job_id appears in both slurm and tamu files, the tamu record
+    is kept (it contains richer wall-clock start/end timestamps).
     """
     chunks = []
 
-    # Legacy: batch CSV files (submit.slurm + run_batch.py)
+    # Legacy batch CSV files (kept for backward compat; no longer written)
     for f in sorted(TIMING.glob("timing_*.csv")):
-        chunks.append(pd.read_csv(f))
+        df = pd.read_csv(f)
+        if "backend" not in df.columns:
+            df["backend"] = "slurm_legacy"
+        chunks.append(df)
 
-    # TAMULauncher: per-sim JSON files (submit_tamulauncher.slurm + run_sim.py) in local timing directory
-    sim_jsons = sorted(TIMING.glob("timing_sim_*.json"))
-    if sim_jsons:
-        records = []
-        for p in sim_jsons:
-            try:
-                with open(p) as f:
-                    records.append(json.load(f))
-            except Exception:
-                pass
-        if records:
-            chunks.append(pd.DataFrame(records))
+    # SLURM-array per-sim JSONs
+    slurm_df = _load_timing_jsons("timing_sim_*_slurm.json")
+    if not slurm_df.empty:
+        chunks.append(slurm_df)
+
+    # TAMULauncher per-sim JSONs
+    tamu_df = _load_timing_jsons("timing_sim_*_tamu.json")
+    if not tamu_df.empty:
+        chunks.append(tamu_df)
 
     if not chunks:
         return pd.DataFrame()
 
     combined = pd.concat(chunks, ignore_index=True)
-    # De-duplicate by job_id, keeping the first occurrence
-    if "job_id" in combined.columns:
+
+    # De-duplicate by job_id: tamu > slurm > legacy (last wins after sort)
+    if "job_id" in combined.columns and "backend" in combined.columns:
+        priority = {"slurm_legacy": 0, "slurm": 1, "tamu": 2}
+        combined["_pri"] = combined["backend"].map(lambda b: priority.get(b, 0))
+        combined = (
+            combined.sort_values("_pri")
+            .drop_duplicates(subset=["job_id"], keep="last")
+            .drop(columns=["_pri"])
+        )
+    elif "job_id" in combined.columns:
         combined = combined.drop_duplicates(subset=["job_id"], keep="first")
-    return combined
+
+    return combined.reset_index(drop=True)
+
 
 
 def summarize_json(path):

@@ -25,56 +25,14 @@ def load():
     return df
 
 
-def load_slurm():
-    p = RESULTS / "slurm_timing.csv"
-    return pd.read_csv(p) if p.exists() else pd.DataFrame()
-
-
-def load_cumulative():
-    """Load cumulative completion curves for all available modes.
-
-    Returns a dict with keys 'slurm', 'tamulauncher', 'theoretical',
-    each being a DataFrame or None.
-    """
-    def _try(name):
-        p = RESULTS / name
-        return pd.read_csv(p) if p.exists() else None
-
-    return {
-        "slurm":         _try("cumulative_real_slurm.csv"),
-        "tamulauncher":  _try("cumulative_real_tamulauncher.csv"),
-        "theoretical":   _try("cumulative_theoretical.csv"),
-    }
-
-
-def load_node_dist():
-    p = RESULTS / "node_distribution.csv"
-    return pd.read_csv(p) if p.exists() else pd.DataFrame()
-
-
-def get_sims_per_job():
-    import re
-    submit_slurm = PROJECT / "submit.slurm"
-    if submit_slurm.exists():
-        with open(submit_slurm, "r", encoding="utf-8") as f:
-            content = f.read()
-            match = re.search(r'SIMS_PER_JOB="\$\{SIMS_PER_JOB:-(\d+)\}"', content)
-            if match:
-                return int(match.group(1))
-    return 30
-
-
 def load_sim_timing():
-    """Union of per-sim timing from both SLURM (timing_*.csv) and TAMULauncher (timing_sim_*.json)."""
+    """Load per-sim timing from JSON files for both backends."""
     import json
     chunks = []
-    legacy_files = sorted((PROJECT / "timing").glob("timing_*.csv"))
-    if legacy_files:
-        chunks.append(pd.concat([pd.read_csv(f) for f in legacy_files], ignore_index=True))
-    sim_jsons = sorted((PROJECT / "timing").glob("timing_sim_*.json"))
-    if sim_jsons:
+    timing_dir = PROJECT / "timing"
+    for pattern in ("timing_sim_*_slurm.json", "timing_sim_*_tamu.json"):
         records = []
-        for p in sim_jsons:
+        for p in sorted(timing_dir.glob(pattern)):
             try:
                 records.append(json.loads(p.read_text()))
             except Exception:
@@ -84,9 +42,35 @@ def load_sim_timing():
     if not chunks:
         return pd.DataFrame()
     combined = pd.concat(chunks, ignore_index=True)
-    if "job_id" in combined.columns:
+    # De-duplicate by job_id preferring tamu over slurm
+    if "job_id" in combined.columns and "backend" in combined.columns:
+        priority = {"slurm": 0, "tamu": 1}
+        combined["_pri"] = combined["backend"].map(lambda b: priority.get(b, 0))
+        combined = (
+            combined.sort_values("_pri")
+            .drop_duplicates(subset=["job_id"], keep="last")
+            .drop(columns=["_pri"])
+        )
+    elif "job_id" in combined.columns:
         combined = combined.drop_duplicates(subset=["job_id"], keep="first")
-    return combined
+    return combined.reset_index(drop=True)
+
+
+def load_cumulative():
+    """Load cumulative completion curves for all available modes.
+
+    Returns a dict with keys 'slurm', 'tamu', 'theoretical',
+    each being a DataFrame or None.
+    """
+    def _try(name):
+        p = RESULTS / name
+        return pd.read_csv(p) if p.exists() else None
+
+    return {
+        "slurm": _try("cumulative_real_slurm.csv"),
+        "tamu":  _try("cumulative_real_tamu.csv"),
+        "theoretical": _try("cumulative_theoretical.csv"),
+    }
 
 
 # ─── PLOT 1: Cumulative Completion (Real vs Theoretical) ────────────────────────
@@ -99,23 +83,23 @@ def plot_cumulative_completion():
     if curves["slurm"] is not None:
         real = curves["slurm"]
         ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
-                linewidth=2, color="#2c7bb6", label="SLURM Job Array (sacct)")
+                linewidth=2, color="#2c7bb6", label="SLURM Job Array")
         any_real = True
-    if curves["tamulauncher"] is not None:
-        real = curves["tamulauncher"]
+    if curves["tamu"] is not None:
+        real = curves["tamu"]
         ax.plot(real["t_seconds"], real["cum_sims"], drawstyle="steps-post",
                 linewidth=2, color="#1a9641", label="TAMULauncher (per-sim timestamps)")
         any_real = True
 
     all_max = []
-    for key in ("slurm", "tamulauncher"):
+    for key in ("slurm", "tamu"):
         if curves[key] is not None:
             all_max.append(curves[key]["t_seconds"].max())
             ax.axvline(curves[key]["t_seconds"].max(),
                        color="#2c7bb6" if key == "slurm" else "#1a9641",
                        linestyle=":", alpha=0.4)
 
-    cum_maxes = [curves[key]["cum_sims"].max() for key in ("slurm", "tamulauncher") if curves[key] is not None]
+    cum_maxes = [curves[key]["cum_sims"].max() for key in ("slurm", "tamu") if curves[key] is not None]
     ax.set_ylim(0, (max(cum_maxes) if cum_maxes else 1000) * 1.1)
     ax.set_xlabel("Wall-clock Time (seconds)")
     ax.set_ylabel("Cumulative Simulations Completed")
@@ -128,37 +112,40 @@ def plot_cumulative_completion():
     print("  saved cumulative_completion.png")
 
 
-# ─── PLOT 2: SLURM Task Duration Histogram ───────────────────────────────
+# ─── PLOT 2: Per-Sim Duration Histogram ──────────────────────────────────────
 
 def plot_slurm_task_duration():
-    slurm = load_slurm()
-    if slurm.empty:
-        print("  skipping slurm_task_duration.png (no slurm_timing.csv)")
+    sim_timing = load_sim_timing()
+    if sim_timing.empty:
+        print("  skipping sim_duration_hist.png (no per-sim timing data)")
         return
-    sims_per_job = get_sims_per_job()
+    ok = sim_timing[sim_timing["status"] == "OK"] if "status" in sim_timing.columns else sim_timing
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(slurm["elapsed_seconds"], bins=12, color="#2c7bb6", edgecolor="white")
-    ax.axvline(slurm["elapsed_seconds"].mean(), color="#d7191c", linestyle="--",
-               label=f"Mean: {slurm['elapsed_seconds'].mean():.0f}s")
-    ax.set_xlabel("SLURM Task Duration (seconds)")
-    ax.set_ylabel("Number of Tasks")
-    ax.set_title(f"Distribution of {len(slurm)} SLURM Task Durations ({sims_per_job} sims each)")
+    ax.hist(ok["duration_seconds"], bins=20, color="#2c7bb6", edgecolor="white")
+    ax.axvline(ok["duration_seconds"].mean(), color="#d7191c", linestyle="--",
+               label=f"Mean: {ok['duration_seconds'].mean():.1f}s")
+    ax.set_xlabel("Simulation Duration (seconds)")
+    ax.set_ylabel("Number of Simulations")
+    ax.set_title(f"Per-Sim Duration Distribution ({len(ok)} OK sims)")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(OUT_DIR / "slurm_task_duration.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "sim_duration_hist.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved slurm_task_duration.png")
+    print("  saved sim_duration_hist.png")
 
 
-# ─── PLOT 3: Node Distribution ──────────────────────────────────────────
+# ─── PLOT 3: Node Distribution (legacy — skipped if no data) ─────────────────
 
 def plot_node_distribution():
-    nd = load_node_dist()
-    if nd.empty:
+    p = RESULTS / "node_distribution.csv"
+    if not p.exists():
         print("  skipping node_distribution.png (no node_distribution.csv)")
         return
-    slurm = load_slurm()
-    num_nodes = slurm["node"].nunique() if not slurm.empty else nd["num_nodes"].sum()
+    nd = pd.read_csv(p)
+    if nd.empty:
+        print("  skipping node_distribution.png (empty node_distribution.csv)")
+        return
+    num_nodes = nd["num_nodes"].sum()
     fig, ax = plt.subplots(figsize=(7, 4))
     bars = ax.bar(nd["tasks_per_node"].astype(str), nd["num_nodes"],
                   color="#2c7bb6", edgecolor="white")
