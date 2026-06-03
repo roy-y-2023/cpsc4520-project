@@ -1,6 +1,24 @@
+"""Generate all presentation figures from run_summary.csv and timing data.
+
+Outputs eight PNG files to plots/:
+  cumulative_completion.png  — SLURM vs TAMULauncher throughput curves
+  sim_duration_hist.png      — per-simulation duration histogram
+  node_distribution.png      — ACES node load distribution (if available)
+  timing_by_penalty.png      — simulation duration by disease penalty level
+  heatmap_penalty0.png       — peak infection heat-maps (penalty=0 only)
+  survival_stacked.png       — survival rate by penalty and framework
+  gini_penalty.png           — Gini change under pandemic (penalty=0.1)
+  memory_by_penalty.png      — peak memory usage by penalty level
+
+Usage:
+    python plots.py
+"""
+
+import json
 from pathlib import Path
+
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # non-interactive backend; must be set before pyplot import
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
@@ -19,15 +37,19 @@ FRAMEWORKS = [
 FW_LABELS = ["none", "altruist", "bentham", "egoist", "negBent", "asimov", "temper", "PECS"]
 
 
-def load():
+def load() -> pd.DataFrame:
+    """Load run_summary.csv and coerce the survived column to bool."""
     df = pd.read_csv(RESULTS / "run_summary.csv")
     df["survived"] = df["survived"].astype(bool)
     return df
 
 
-def load_sim_timing():
-    """Load per-sim timing from JSON files for both backends."""
-    import json
+def load_sim_timing() -> pd.DataFrame:
+    """Load per-sim timing from JSON files for both backends.
+
+    De-duplicates by job_id, preferring tamu records over slurm records because
+    the tamu backend captures richer wall-clock start/end timestamps.
+    """
     chunks = []
     timing_dir = PROJECT / "timing"
     for pattern in ("timing_sim_*_slurm.json", "timing_sim_*_tamu.json"):
@@ -249,7 +271,9 @@ def plot_survival_stacked():
 def plot_gini_penalty():
     df = load()
     # Filter by penalty == 0.1 and only include survived runs
-    disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0.1) & (df["survived"] == True)].copy()
+    disease = df[
+        (df["run_type"] == "disease") & (df["penalty"] == 0.1) & df["survived"]
+    ].copy()
     disease["framework"] = pd.Categorical(disease["framework"], categories=FRAMEWORKS)
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -294,7 +318,8 @@ def plot_memory_by_penalty():
 
 # ─── MAIN ───────────────────────────────────────────────────────
 
-def main():
+def main() -> None:
+    """Generate all plots and save them to the plots/ directory."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Generating timing + stratified plots...")
     plot_cumulative_completion()

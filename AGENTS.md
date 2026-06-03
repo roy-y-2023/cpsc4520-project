@@ -3,8 +3,8 @@
 ## Project Overview
 
 **SugarCluster** — Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on the [Texas A&M ACES](https://hprc.tamu.edu/aces/) cluster. The `sugarscape/` directory is a **read-only git submodule** — never modify files inside it. All new code lives in `SugarCluster/`.
-
-**Status:** Phase 5 (Presentation & Packaging). All 1,520 simulations ran successfully on ACES — 51 tasks for the SLURM job array (hybrid: 30 sims/task) and 128 concurrent TAMULauncher tasks.
+1
+**Status:** Phase 5 (Presentation & Packaging). All 2,168 simulations ran successfully on ACES — 80 tasks for the SLURM job array (hybrid: 30 sims/task) and 240 concurrent TAMULauncher tasks.
 
 ## Questions to Explore
 
@@ -36,7 +36,7 @@ SugarCluster/                  # Main implementation (all new code)
 ├── setup_aces.sh              # ACES environment bootstrap
 │
 ├── parse_slurm.py             # Parse sacct output → slurm_timing.csv
-├── aggregate.py               # 1,520 JSON logs + timing → run_summary.csv
+├── aggregate.py               # 2,168 JSON logs + timing → run_summary.csv
 ├── timing_analysis.py         # Throughput/parallelism metrics + cumulative curves
 ├── analyze.py                 # Grouped statistics, penalty=0 stratification
 ├── plots.py                   # 7 presentation figures
@@ -48,9 +48,9 @@ SugarCluster/                  # Main implementation (all new code)
 ├── pyproject.toml             # Python project config
 ├── .python-version            # Python 3.12
 │
-├── configs/                   # 656 generated .config JSON files
+├── configs/                   # 2,168 generated .config JSON files
 ├── commands.txt               # TAMULauncher commands file (one line per sim)
-├── data/                      # 656 simulation JSON log outputs
+├── data/                      # 2,168 simulation JSON log outputs
 ├── timing/                    # Per-batch CSVs (SLURM) and downloaded per-sim JSONs (TAMULauncher). Files generated at root directory on cluster and then pulled here.
 │   └── timing_sim_*.json      # timing_sim_<job_id>.json — written in root on cluster, pulled here
 ├── results/                   # All analysis outputs (CSVs)
@@ -65,7 +65,7 @@ SugarCluster/                  # Main implementation (all new code)
 
 | Script | Reads | Writes | Purpose |
 | :--- | :--- | :--- | :--- |
-| `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 1,520 minimal JSON configs |
+| `generate_configs.py` | `sweep.toml` | `configs/*.config`, `jobs.csv` | Generate 2,168 minimal JSON configs |
 | `generate_commands.py` | `jobs.csv` | `commands.txt` | TAMULauncher: one command line per sim |
 | `submit.slurm` | `jobs.csv` | `data/*.json`, `timing/*.csv` | SLURM job array |
 | `submit_tamulauncher.slurm` | `commands.txt` | `data/*.json`, `timing_sim_*.json` | **TAMULauncher** submit (no array limit) |
@@ -73,7 +73,7 @@ SugarCluster/                  # Main implementation (all new code)
 | `run_sim.py` | `jobs.csv`, config | JSON log + `timing_sim_<id>.json` | Single-sim runner (TAMULauncher worker) |
 | `check_outputs.py` | `jobs.csv` | log summary | Post-run validation |
 | `parse_slurm.py` | `slurm_full.txt` | `slurm_timing.csv` | Parse sacct output |
-| `aggregate.py` | `data/*.json`, `timing/`, `jobs.csv` | `run_summary.csv` | Extract 1,520 per-run metrics + baseline deltas |
+| `aggregate.py` | `data/*.json`, `timing/`, `jobs.csv` | `run_summary.csv` | Extract 2,168 per-run metrics + baseline deltas |
 | `timing_analysis.py` | `slurm_timing.csv`, `timing/*.csv` | `timing_summary.csv`, cumulative curves | Throughput, parallelism, node distribution |
 | `analyze.py` | `run_summary.csv` | `summary_stats.csv`, `framework_*.csv` | Grouped stats, penalty stratification |
 | `plots.py` | `run_summary.csv`, `slurm_timing.csv`, cumulative CSVs | `plots/*.png` | 7 presentation figures |

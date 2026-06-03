@@ -1,6 +1,18 @@
+"""Aggregate per-simulation JSON logs and timing data into run_summary.csv.
+
+Reads every sim_*.json output from the data/ directory, extracts per-run
+metrics (survival, population, Gini, happiness, cause-of-death counts), merges
+per-sim timing from the timing/ directory, computes baseline deltas, and writes
+results/run_summary.csv.
+
+Usage:
+    python aggregate.py
+"""
+
 import json
 import math
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +24,8 @@ JOBS_CSV = PROJECT / "jobs.csv"
 OUTPUT = PROJECT / "results" / "run_summary.csv"
 
 
-def load_jobs():
+def load_jobs() -> pd.DataFrame:
+    """Load the jobs manifest and add a config_stem column for matching log files."""
     df = pd.read_csv(JOBS_CSV)
     df["config_stem"] = df["config_path"].apply(lambda p: Path(p).stem)
     return df
@@ -72,8 +85,13 @@ def load_timing() -> "pd.DataFrame":
     return combined.reset_index(drop=True)
 
 
+def summarize_json(path: Path) -> dict:
+    """Extract summary metrics from a single Sugarscape JSON log file.
 
-def summarize_json(path):
+    Performs a single pass over all timestep records to compute population,
+    disease, wealth, and death statistics.  Returns an empty dict if the log
+    contains no records.
+    """
     with open(path, encoding="utf-8") as f:
         records = json.load(f)
 
@@ -116,7 +134,7 @@ def summarize_json(path):
         "survived": survived,
         "time_to_extinction": final_ts if not survived else math.nan,
         "peak_sick_percentage": peak_sick,
-        "peak_sick_timestep": sick_values[peak_idx] if n else 0,
+        "peak_sick_timestep": records[peak_idx].get("timestep", peak_idx) if n else 0,
         "avg_sick_percentage": sum(sick_values) / n if n else 0,
         "final_population": final.get("population", 0),
         "initial_population": initial.get("population", 0),
@@ -137,7 +155,13 @@ def summarize_json(path):
     }
 
 
-def add_baseline_deltas(df):
+def add_baseline_deltas(df: pd.DataFrame) -> pd.DataFrame:
+    """Attach baseline reference values and compute delta columns.
+
+    For each disease run, appends the baseline final_population, final_gini,
+    final_happiness, and final_meanWealth from the matching framework's baseline
+    run, then computes delta_* columns (disease minus baseline).
+    """
     baselines = df[df["run_type"] == "baseline"].copy()
     baseline_cols = {
         "final_population": "baseline_final_population",
@@ -178,7 +202,8 @@ def _process_sim(args):
     return row
 
 
-def main():
+def main() -> None:
+    """Entry point: load jobs + timing, aggregate all sim logs, write run_summary.csv."""
     jobs = load_jobs()
     timing = load_timing()
 
@@ -213,4 +238,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
