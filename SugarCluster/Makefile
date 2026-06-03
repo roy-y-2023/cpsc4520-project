@@ -40,7 +40,7 @@ analyze:
 plots:
 	$(UV) plots.py
 
-all: aggregate timing analyze plots
+all: configs aggregate timing analyze plots
 	@echo "=== Pipeline complete ==="
 	@echo "Results: results/"
 	@echo "Plots:   plots/"

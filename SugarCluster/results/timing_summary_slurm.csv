@@ -1,2 +1,2 @@
 backend,total_sims,total_wall_seconds,total_wall_minutes,total_sim_seconds,avg_sim_duration,min_sim_duration,max_sim_duration,sims_per_wall_hour,parallelism_factor,total_duration_hhmmss,submit_time,wall_includes_queue_wait,ok_count,fail_count
-slurm,2888,382.75733,6.38,8616.7,2.98,0.2,17.5,27162.9,22.51,6:22,2026-06-03T06:04:46+00:00,True,2888,0
+slurm,2168,725.25912,12.09,23186.1,10.69,8.8,15.4,10761.4,31.97,12:05,2026-06-03T19:48:17+00:00,True,2168,0

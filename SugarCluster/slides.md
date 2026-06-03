@@ -24,7 +24,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 ### Research Questions
 
 1. **Which disease parameters maximize or minimize the spread of infection?**
-2. **How do socio-economic factors (Gini, happiness) interact with pandemics?**
+2. **How do ethical frameworks influence socio-economic factors (Gini, happiness) during a pandemic?**
 
 ### Scale
 
@@ -64,7 +64,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 | Metric | Value |
 | :--- | :--- |
 | **Total simulations** | 2,888 |
-| **SLURM tasks** | 73 (hybrid: 40 sims/task) |
+| **SLURM tasks** | 80 (hybrid: 40 sims/task) |
 | **Nodes used** | 12 ACES nodes |
 | **Total wall time** | **6 min 22 sec** (submit → last task) |
 | **Serial equivalent** | 8,617 seconds (143.6 min) |
@@ -73,7 +73,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 | **Throughput** | **27,163 sims/wall-hour** |
 
 **Bottleneck:** ACES QOS limits — max array size forced hybrid batching (40 sims/task).
-Global concurrency cap of 50 running jobs limits true parallelism.
+Global concurrency cap of 40 running jobs limits true parallelism.
 
 ---
 
@@ -127,7 +127,7 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 ![cumulative](plots/cumulative_completion.png)
 
 **TAMULauncher (green)** — 2,888 individual sims, per-sim end timestamps. Finishes at **3:33**.
-**SLURM Job Array (blue)** — 73 batch tasks via `sacct`. Staircase reflects 40-sim batches. Finishes at **6:22**.
+**SLURM Job Array (blue)** — 80 batch tasks via `sacct`. Staircase reflects 40-sim batches. Finishes at **6:22**.
 
 ---
 
@@ -189,8 +189,7 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |
-| **Disease params must be lists** `[0.3, 0.3]` | Sugarscape validation requires range format |
-| **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to very small values [0, 0.001, …, 0.5] |
+| **Final Analysis is Slow**| Use `ThreadPoolExecutor` to parallelize parsing sugarscape outputs |
 
 
 ---

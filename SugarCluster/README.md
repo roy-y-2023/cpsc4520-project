@@ -95,8 +95,6 @@ make check-outputs
 
 # Export job metadata from SLURM sacct (replace with your active Job ID)
 sacct -j <JOB_ID> > slurm_full.txt               # For Job Array backend
-# OR
-sacct -j <JOB_ID> > slurm_tamulauncher_full.txt  # For TAMULauncher backend
 
 # Run the post-processing pipeline
 make all
@@ -143,15 +141,22 @@ SugarCluster/
 Edit `sweep.toml` to define the parameters and ethical frameworks to sweep:
 
 ```toml
-[parameters]
-diseaseTransmissionChance = [0.3, 0.6, 1.0]
+[disease.sweep]
+diseaseTransmissionChance = [0.05, 0.1, 0.3, 0.6, 1.0]
 diseaseTagStringLength = [5, 13, 21]
 agentImmuneSystemLength = [10, 35, 60]
-diseaseSugarMetabolismPenalty = [0, 0.1, 0.25, 0.5, 1, 2, 3]
+diseaseSugarMetabolismPenalty = [0, 0.1, 0.25, 0.5, 1, 2]
 
-models = [
-  "none", "altruist", "bentham", "egoist",
-  "negativeBentham", "asimov", "temperance", "temperancePECS"
+[sweep.models]
+frameworks = [
+  "none",
+  "altruist",
+  "bentham",
+  "egoist",
+  "negativeBentham",
+  "asimov",
+  "temperance",
+  "temperancePECS"
 ]
 ```
 
@@ -200,11 +205,6 @@ After execution completes, export the job history metadata from `sacct` directly
 For the Job Array backend (e.g., job ID `1730737`):
 ```bash
 sacct -j 1730737 > slurm_full.txt
-```
-
-For the TAMULauncher backend (e.g., job ID `1730944`):
-```bash
-sacct -j 1730944 > slurm_tamulauncher_full.txt
 ```
 
 *(Optional)* If you wish to download the simulation results to analyze them locally:

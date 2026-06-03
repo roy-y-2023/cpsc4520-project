@@ -249,7 +249,7 @@ def plot_survival_stacked():
 def plot_gini_penalty():
     df = load()
     # Filter by penalty == 0.001 and only include survived runs
-    disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0.001) & (df["survived"] == True)].copy()
+    disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0.1) & (df["survived"] == True)].copy()
     disease["framework"] = pd.Categorical(disease["framework"], categories=FRAMEWORKS)
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -257,7 +257,7 @@ def plot_gini_penalty():
                 order=FRAMEWORKS, hue="framework", palette="Set2", legend=False, ax=ax)
     ax.axhline(0, color="gray", linestyle="--", alpha=0.5)
     ax.set_ylabel("Gini Change (disease final - baseline final)")
-    ax.set_title("Wealth Inequality Change Under Pandemic by Framework (penalty=0.001 only)")
+    ax.set_title("Wealth Inequality Change Under Pandemic by Framework (penalty=0.1 only)")
     ax.set_xticks(range(len(FRAMEWORKS)))
     ax.set_xticklabels(FW_LABELS, rotation=30, ha="right")
     fig.tight_layout()

@@ -1,2 +1,2 @@
 backend,total_sims,total_wall_seconds,total_wall_minutes,total_sim_seconds,avg_sim_duration,min_sim_duration,max_sim_duration,sims_per_wall_hour,parallelism_factor,total_duration_hhmmss,submit_time,wall_includes_queue_wait,ok_count,fail_count
-tamu,2888,229.630186,3.83,28449.6,9.85,7.9,14.3,45276.3,123.89,3:49,2026-06-03T19:11:56+00:00,True,2888,0
+tamu,2168,147.308369,2.46,22480.399999999998,10.37,8.0,15.8,52982.7,152.61,2:27,2026-06-03T19:41:08+00:00,True,2168,0
