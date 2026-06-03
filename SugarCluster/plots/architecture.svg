@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <defs>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.08" flood-color="#0f172a" />
+    </filter>
+    
+    <!-- Arrowhead marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="100%" height="100%" fill="#ffffff" />
+  
+  <!-- ==================== CONNECTIONS (drawn first so they sit behind boxes) ==================== -->
+  
+  <!-- Row 1: toml -> gen -> configs -->
+  <line x1="390" y1="200" x2="632" y2="200" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="960" y1="200" x2="1162" y2="200" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  
+  <!-- Row 1 Configs to Row 2 execution strategies -->
+  <path d="M 1350 260 L 1350 320 L 550 320 L 550 382" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 1350 320 L 1050 320 L 1050 382" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  
+  <!-- Row 2 execution strategies to ACES HPC Cluster -->
+  <path d="M 550 510 L 550 570 L 1350 570 L 1350 632" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 1050 510 L 1050 570" fill="none" stroke="#64748b" stroke-width="3" />
+  
+  <!-- Row 3: aces -> agg -> plots -->
+  <line x1="1170" y1="700" x2="968" y2="700" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="640" y1="700" x2="398" y2="700" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)" />
+
+  <!-- ==================== BOXES & TEXT ==================== -->
+  
+  <!-- Box 1: sweep.toml (Purple) -->
+  <rect x="110" y="140" width="280" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="250" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">sweep.toml</text>
+  <text x="250" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">(4 knobs)</text>
+  
+  <!-- Box 2: generate_configs.py (Purple) -->
+  <rect x="640" y="140" width="320" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="800" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">generate_configs.py</text>
+  <text x="800" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">(Cartesian Sweep Engine)</text>
+  
+  <!-- Box 3: 2,888 configs + jobs.csv (Purple) -->
+  <rect x="1170" y="140" width="360" height="120" rx="10" fill="#f5f3ff" stroke="#818cf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="1350" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#1e1b4b" text-anchor="middle">2,888 .config files</text>
+  <text x="1350" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#4338ca" text-anchor="middle">+ jobs.csv manifest</text>
+  
+  <!-- Box 4: submit.slurm (Blue) -->
+  <rect x="380" y="390" width="340" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="550" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">submit.slurm</text>
+  <text x="550" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(Job Array: 40 sims/task)</text>
+  
+  <!-- Box 5: submit_tamulauncher.slurm (Blue) -->
+  <rect x="850" y="390" width="400" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="1050" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">submit_tamulauncher.slurm</text>
+  <text x="1050" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(TAMULauncher Concurrency)</text>
+  
+  <!-- Box 6: ACES HPC Cluster (Blue) -->
+  <rect x="1170" y="640" width="360" height="120" rx="10" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)" />
+  <text x="1350" y="695" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#0369a1" text-anchor="middle">ACES HPC Cluster</text>
+  <text x="1350" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">(2,888 JSON results)</text>
+  
+  <!-- Box 7: aggregate.py + analyze.py + plots.py (Green) -->
+  <rect x="640" y="640" width="320" height="120" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2" filter="url(#shadow)" />
+  <text x="800" y="685" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="bold" fill="#065f46" text-anchor="middle">aggregate.py + analyze.py</text>
+  <text x="800" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="bold" fill="#065f46" text-anchor="middle">+ plots.py</text>
+  <text x="800" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#047857" text-anchor="middle">(Analysis &amp; Plotting Pipeline)</text>
+  
+  <!-- Box 8: plots/*.png (Green) -->
+  <rect x="110" y="640" width="280" height="120" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2" filter="url(#shadow)" />
+  <text x="250" y="695" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#065f46" text-anchor="middle">plots/*.png</text>
+  <text x="250" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#047857" text-anchor="middle">(8 final presentation figures)</text>
+</svg>

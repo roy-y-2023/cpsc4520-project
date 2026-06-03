@@ -35,24 +35,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ## Architecture
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ sweep.toml   │───▶│ generate_configs │───▶│ 2,888 .config files     │
-│ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest    │
-└──────────────┘     └──────────────────┘     └───────────┬────────────┘
-                                                          │
-                                        ┌─────────────────┴─────────────────┐
-                                        ▼                                   ▼
-                                   submit.slurm                 submit_tamulauncher.slurm
-                                    (job array)                      (TAMULauncher)
-                                        └─────────────────┬─────────────────┘
-                                                          ▼
-┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ plots/*.png  │◀───│ aggregate.py     │◀───│ ACES HPC Cluster        │
-│ 8 figures    │     │ + analyze.py     │     │ 2,888 JSON results     │
-└──────────────┘     │ + plots.py       │     └────────────────────────┘
-                     └──────────────────┘
-```
+![architecture](plots/architecture.svg)
 
 ### Data Flow
 
