@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=sugarscape-sweep
-#SBATCH --array=1-97%50
+#SBATCH --array=1-73%50
 #SBATCH --time=02:00:00
 #SBATCH --mem=1G
 #SBATCH --ntasks=1
@@ -21,12 +21,12 @@ fi
 #
 # Usage:
 #   PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project \
-#       SIMS_PER_JOB=10 \
-#       sbatch --array=1-66%50 -A 155415875505 submit.slurm
+#       SIMS_PER_JOB=40 \
+#       sbatch --array=1-73%50 -A 155415875505 submit.slurm
 # ----------------------------------------------------------
 
 PROJECT_DIR="${PROJECT_DIR:-}"
-SIMS_PER_JOB="${SIMS_PER_JOB:-30}"
+SIMS_PER_JOB="${SIMS_PER_JOB:-40}"
 
 # Strip /SugarCluster from PROJECT_DIR if the user accidentally included it
 if [ -n "$PROJECT_DIR" ] && [[ "$PROJECT_DIR" == */SugarCluster* ]]; then

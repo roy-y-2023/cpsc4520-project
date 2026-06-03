@@ -1,0 +1,1 @@
+{"job_id": 89, "backend": "slurm", "run_type": "disease", "framework": "none", "diseaseTransmissionChance": "0.1", "diseaseTagStringLength": "5", "agentImmuneSystemLength": "35", "diseaseSugarMetabolismPenalty": "0.5", "start_time": "2026-06-03T06:05:30.552510+00:00", "end_time": "2026-06-03T06:05:34.753738+00:00", "duration_seconds": 4.2, "peak_memory_mb": 26.66, "status": "OK"}

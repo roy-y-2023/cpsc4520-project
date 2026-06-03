@@ -28,7 +28,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ### Scale
 
-- **1,520 simulations** — every combination of 4 disease knobs across 8 ethical frameworks (with baselines)
+- **2,888 simulations** — every combination of 4 disease knobs across 8 ethical frameworks (with baselines)
 - **1,000 timesteps** each — run twice: once with SLURM job arrays, once with TAMULauncher
 
 ---
@@ -37,7 +37,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ```
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
-│ sweep.toml   │───▶│ generate_configs │───▶│ 1,520 .config files     │
+│ sweep.toml   │───▶│ generate_configs │───▶│ 2,888 .config files     │
 │ (4 knobs)    │     │ .py              │     │ + jobs.csv manifest    │
 └──────────────┘     └──────────────────┘     └───────────┬────────────┘
                                                           │
@@ -49,17 +49,17 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
                                                           ▼
 ┌──────────────┐     ┌──────────────────┐     ┌────────────────────────┐
 │ plots/*.png  │◀───│ aggregate.py     │◀───│ ACES HPC Cluster        │
-│ 8 figures    │     │ + analyze.py     │     │ 1,520 JSON results     │
+│ 8 figures    │     │ + analyze.py     │     │ 2,888 JSON results     │
 └──────────────┘     │ + plots.py       │     └────────────────────────┘
                      └──────────────────┘
 ```
 
 ### Data Flow
 
-1. **`sweep.toml`** → TOML declares 4 parameter knobs (3 with 3 values, 1 with 7 values) + 8 ethical frameworks
-2. **`generate_configs.py`** → emits 1,520 minimal JSON configs + `jobs.csv` manifest
+1. **`sweep.toml`** → TOML declares 4 parameter knobs (transmission: 5 values, tag length: 3, immunity: 3, penalty: 8) + 8 ethical frameworks
+2. **`generate_configs.py`** → emits 2,888 minimal JSON configs + `jobs.csv` manifest
 3. **Two submission strategies** — compared head-to-head (see next slides)
-4. **`aggregate.py`** → parses 1,520 JSON results + timing → `run_summary.csv`
+4. **`aggregate.py`** → parses 2,888 JSON results + timing → `run_summary.csv`
 5. **`plots.py`** → 8 figures for presentation
 
 ---
@@ -68,29 +68,29 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Job Array: 1730737                                         │
+│  Job Array: 1737370                                         │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐     ┌─────────┐        │
-│  │ Task 1  │ │ Task 2  │ │ Task 3  │ ... │ Task 51 │        │
-│  │ 30 sims │ │ 30 sims │ │ 30 sims │     │ 30 sims │        │
-│  │ ac022   │ │ ac040   │ │ ac069   │     │ ac017   │        │
+│  │ Task 1  │ │ Task 2  │ │ Task 3  │ ... │ Task 73 │        │
+│  │ 40 sims │ │ 40 sims │ │ 40 sims │     │  8 sims │        │
+│  │ ac033   │ │ ac107   │ │ ac105   │     │ ac053   │        │
 │  └─────────┘ └─────────┘ └─────────┘     └─────────┘        │
-│                    11 ACES nodes                            │
+│                    12 ACES nodes                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 | Metric | Value |
 | :--- | :--- |
-| **Total simulations** | 1,520 |
-| **SLURM tasks** | 51 (hybrid: 30 sims/task) |
-| **Nodes used** | 11 ACES nodes |
-| **Total wall time** | **5 min 16 sec** |
-| **Serial equivalent** | 6,599 seconds (110 min) |
-| **Parallelism factor** | **20.9×** |
-| **Batch overhead** | **6.0%** (8.6s Python startup + config loading) |
-| **Throughput** | **17,316 sims/wall-hour** |
+| **Total simulations** | 2,888 |
+| **SLURM tasks** | 73 (hybrid: 40 sims/task) |
+| **Nodes used** | 12 ACES nodes |
+| **Total wall time** | **6 min 22 sec** (submit → last task) |
+| **Serial equivalent** | 8,617 seconds (143.6 min) |
+| **Parallelism factor** | **22.5×** |
+| **Avg sim duration** | **3.0s** |
+| **Throughput** | **27,163 sims/wall-hour** |
 
-**Bottleneck:** ACES QOS limits — max array size forced hybrid batching (30 sims/task).
-Global concurrency cap of 40 running jobs limits true parallelism.
+**Bottleneck:** ACES QOS limits — max array size forced hybrid batching (40 sims/task).
+Global concurrency cap of 50 running jobs limits true parallelism.
 
 ---
 
@@ -98,26 +98,26 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  TAMULauncher (Job: 1730944)                         │
+│  TAMULauncher (Job: 1737571)                         │
 │  commands.txt: 1 line per sim                        │
 │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  ...  ┌──────┐  │
-│  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │       │s1520 │  │
+│  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │       │s2888 │  │
 │  └──────┘ └──────┘ └──────┘ └──────┘       └──────┘  │
-│          8 nodes × 16 tasks = 128 concurrent         │
+│          4 nodes × 16 tasks = 64 concurrent          │
 └──────────────────────────────────────────────────────┘
 ```
 
 | Metric | Value |
 | :--- | :--- |
-| **Total simulations** | 1,520 |
-| **Concurrency** | 128 (8 nodes × 16/node) |
-| **Total wall time** | **60 seconds** |
-| **Serial equivalent** | 4,214 seconds (70 min) |
-| **Parallelism factor** | **70×** |
-| **Overhead** | ~0% (no batching, no Python startup cost per batch) |
-| **Throughput** | **91,144 sims/wall-hour** |
+| **Total simulations** | 2,888 |
+| **Concurrency** | 64 (4 nodes × 16/node) |
+| **Total wall time** | **3 min 33 sec** (submit → last sim) |
+| **Serial equivalent** | 9,313 seconds (155.2 min) |
+| **Parallelism factor** | **43.7×** |
+| **Avg sim duration** | **3.2s** |
+| **Throughput** | **48,801 sims/wall-hour** |
 
-**No job array limit** — TAMULauncher dispatches all 1,520 as individual tasks automatically.
+**No job array limit** — TAMULauncher dispatches all 2,888 as individual tasks automatically.
 
 ---
 
@@ -125,17 +125,17 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 
 | | SLURM Job Array | TAMULauncher |
 | :--- | :--- | :--- |
-| **Wall time** | 5 min 16 sec | **60 sec** |
-| **Throughput** | 17,316 sims/hr | **91,144 sims/hr** |
-| **Parallelism** | 20.9× | **70×** |
+| **Wall time** | 6 min 22 sec | **3 min 33 sec** |
+| **Throughput** | 27,163 sims/hr | **48,801 sims/hr** |
+| **Parallelism** | 22.5× | **43.7×** |
 | **Job limit workaround** | Hybrid batching (complex) | None needed |
-| **Overhead** | 6% (batch startup) | ~0% |
+| **Overhead** | Batch startup per task | ~0% |
 | **Queue wait** | Near-instant (small jobs) | Near-instant (after reduced machine size) |
 | **Portability** | Any SLURM cluster | ACES-specific |
 | **Observability** | `sacct` per task | Per-sim timing JSON |
 
-**Takeaway:** TAMULauncher is **5.3× faster** in wall time and handles the array size limit
-transparently — but requesting 48 CPUs means a longer queue wait even during night time.
+**Takeaway:** TAMULauncher is **1.8× faster** in wall time and handles the array size limit
+transparently — but requesting 64 CPUs means a longer queue wait even during night time.
 
 ---
 
@@ -143,8 +143,8 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 
 ![cumulative](plots/cumulative_completion.png)
 
-**TAMULauncher (green)** — 1,520 individual sims, per-sim end timestamps. Finishes at **60 sec**.
-**SLURM Job Array (blue)** — 51 batch tasks via `sacct`. Staircase reflects 30-sim batches. Finishes at **316 sec**.
+**TAMULauncher (green)** — 2,888 individual sims, per-sim end timestamps. Finishes at **3:33**.
+**SLURM Job Array (blue)** — 73 batch tasks via `sacct`. Staircase reflects 40-sim batches. Finishes at **6:22**.
 **Theoretical (red dashed)** — perfect parallelism baseline from per-sim durations.
 
 ---
@@ -153,13 +153,14 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 
 ![timing](plots/timing_by_penalty.png)
 
-| Penalty | Mean Duration (Survived / Extinct) | Outcome |
+| Penalty | Mean Duration | Outcome |
 | :--- | :--- | :--- |
-| 0.0 | 24.4s / N/A | 100% survival to t=1000 (final pop ~153) |
-| 0.1 – 3.0 | ~5.2s / ~0.4s | 89% extinction at t=1; 11% survive to t=1000 (final pop ~10) |
+| 0.0 | ~17s | 100% survival to t=1000 |
+| 0.001 – 0.5 | ~2.5s | 22.2% survival; 77.8% extinction |
 
-- **Bimodal distribution** — simulation runs either to completion or dies instantly
-- **Any non-zero penalty (0.1 to 3.0) causes mass extinction** for 89% of configurations at t=1
+- **Bimodal distribution** — simulation runs either to completion or dies within a few timesteps
+- **Even tiny penalties (0.001) cause mass extinction** for 77.8% of configurations
+- Survivors are high-immunity / short-tag combinations regardless of penalty magnitude
 
 ---
 
@@ -169,7 +170,7 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 *Peak infection % by transmission × immunity (penalty=0 only)*
 
 - **Transmission=1.0 + immunity=10** → 100% infection peak across all frameworks
-- **Transmission=0.3 + immunity=60** → 98.4% infection peak (due to high initial disease load)
+- **Transmission=0.05 + immunity=60** → lowest infection spread in the sweep
 - **All 8 ethical frameworks show identical heatmaps** — disease physics dominates ethics
 
 ---
@@ -179,7 +180,7 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 ![survival](plots/survival_stacked.png)
 
 - **Penalty=0: 100% survival** across all frameworks
-- **Penalty=0.1 – 3.0: only 11% survival** (just the high-immunity/short-tag combinations)
+- **Penalty=0.001 – 0.5: only 22.2% survival** (just the high-immunity/short-tag combinations)
 - **No framework difference** — ethics don't change outcomes when disease is present
 
 ---
@@ -188,9 +189,9 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 
 ![gini](plots/gini_penalty0.png)
 
-- **Mean delta_gini ≈ -0.01** — wealth inequality slightly decreases under penalty=0
+- **Mean delta_gini ≈ −0.005** — wealth inequality slightly decreases under penalty=0
 - Baseline Gini ~0.3 across all frameworks
-- Disease runs converge to Gini ~0.29
+- Disease runs converge to Gini ~0.295
 - **Finding:** Economic structure of the disease (metabolism penalty) matters more than ethical behavior
 
 ---
@@ -199,15 +200,15 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 
 | Problem | Fix |
 | :--- | :--- |
-| **QOS job limit** (1,520 jobs > max array size) | Hybrid batching: 51 tasks × 30 sims → then switched to TAMULauncher |
-| **ACES global concurrency cap** (40 jobs) | TAMULauncher bypasses this entirely |
-| **TAMULauncher queue wait** | Large resource ask (48 CPU or 16GB per node) → ~2 hour queue time |
+| **QOS job limit** (2,888 jobs > max array size) | Hybrid batching: 73 tasks × 40 sims → then switched to TAMULauncher |
+| **ACES global concurrency cap** (50 jobs) | TAMULauncher bypasses this entirely |
+| **TAMULauncher queue wait** | Large resource ask (64 CPU) → longer queue time |
 | **Misleading Log**| It says process got killed, so I proceed to debug OOM, turns out it's normal TAMULauncher teardown behavior |
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |
 | **Disease params must be lists** `[0.3, 0.3]` | Sugarscape validation requires range format |
-| **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to [0, 0.1, 0.25, 0.5, 1, 2, 3] |
+| **Penalty calibration** [0, 2, 5] → everyone died | Expanded sweep to very small values [0, 0.001, …, 0.5] |
 
 
 ---
@@ -217,7 +218,7 @@ transparently — but requesting 48 CPUs means a longer queue wait even during n
 **Goal:** Reusable, not hard-coded to this experiment.
 
 ```
-sweep.toml          →    generate_configs.py    →    1,520 configs
+sweep.toml          →    generate_configs.py    →    2,888 configs
 (declarative params)     (generic cartesian       (minimal JSON,
                          product engine)           Sugarscape fills defaults)
 
@@ -234,7 +235,7 @@ sweep.toml          →    generate_configs.py    →    1,520 configs
 ## Future Work
 
 1. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
-2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 91K sims/hr this is now tractable
+2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 49K sims/hr this is now tractable
 3. **Interactive dashboard** — real-time monitoring while jobs run on ACES
 4. **Containerized deployment** — Singularity/Docker for zero-install cluster portability
 
@@ -244,10 +245,10 @@ sweep.toml          →    generate_configs.py    →    1,520 configs
 
 **SugarCluster** — TOML → configs → SLURM/TAMULauncher → data → plots
 
-1,520 simulations. Two execution engines. SLURM: 5.3 min. TAMULauncher: 60 sec.
+2,888 simulations. Two execution engines. SLURM: 6:22. TAMULauncher: 3:33.
 
 **Questions?**
 
 ---
 
-*Repository: github.com/your/cpsc4520-project · SLURM job: 1730737 · TAMULauncher job: 1730944*
+*Repository: github.com/your/cpsc4520-project · SLURM job: 1737370 · TAMULauncher job: 1737571*

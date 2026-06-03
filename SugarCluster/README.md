@@ -186,10 +186,10 @@ make pull_data
 To fetch job array metadata from `sacct`:
 ```bash
 # Run on ACES login node (e.g. for Job Array id 1730737):
-sacct -j 1730737 --format=JobID,JobName,NodeList,Elapsed,State,AllocCPUS > slurm_full.txt
+sacct -j 1730737 > slurm_full.txt
 
 # For TAMULauncher job id 1730944:
-sacct -j 1730944 --format=JobID,JobName,NodeList,Elapsed,State,AllocCPUS > slurm_tamulauncher_full.txt
+sacct -j 1730944 > slurm_tamulauncher_full.txt
 ```
 Copy these text files back to the project root directory.
 

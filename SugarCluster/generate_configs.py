@@ -11,7 +11,10 @@ import csv
 import json
 import os
 import sys
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib  # type: ignore[no-redef]  # Python < 3.11
 from itertools import product
 
 

@@ -91,3 +91,4 @@ pull-data:
 	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/sim_*.json data/
 	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/timing_sim_*.json timing/
 	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/submit_time_*.txt ./
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/slurm_*full.txt ./
