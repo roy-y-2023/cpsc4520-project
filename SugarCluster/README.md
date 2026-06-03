@@ -7,17 +7,17 @@ Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on
 SugarCluster automates the entire distributed lifecycle, from configuration sweep generation to parallel execution, post-run verification, and data analysis. It supports a **dual-backend execution model**, allowing you to choose between standard SLURM job arrays and high-performance TAMULauncher execution.
 
 ```
-                              ┌──────────────┐
-                              │  sweep.toml  │
-                              └──────┬───────┘
-                                     ▼
+                            ┌──────────────┐
+                            │  sweep.toml  │
+                            └──────┬───────┘
+                                   ▼
                           ┌──────────────────┐
                           │ generate_configs │
                           └──────┬────┬──────┘
                                  │    │
             ┌────────────────────┘    └────────────────────┐
             ▼                                              ▼
-   1,520 .config files                              configs/ & jobs.csv
+    2,888 .config files                              configs/ & jobs.csv
             │                                              │
             │ (SLURM Job Array)                            │ (TAMULauncher Backend)
             ▼                                              ▼
@@ -28,7 +28,7 @@ SugarCluster automates the entire distributed lifecycle, from configuration swee
             │                                              │
             │                                              ▼
             │                                     submit_tamulauncher.slurm
-            │                                     (128 worker concurrency)
+            │                                     (160 worker concurrency)
             └────────────────────┬─────────────────────────┘
                                  ▼
                          ACES HPC Cluster
@@ -90,14 +90,14 @@ SugarCluster/
 ├── generate_configs.py        # Cartesian product config generator
 ├── generate_commands.py       # TAMULauncher commands generator (commands.txt)
 ├── submit.slurm               # SLURM job array script (hybrid: 30 sims/task)
-├── submit_tamulauncher.slurm  # TAMULauncher submission script (128 concurrent slots)
+├── submit_tamulauncher.slurm  # TAMULauncher submission script (160 concurrent slots)
 ├── run_batch.py               # Per-batch runner (SLURM job array task worker)
 ├── run_sim.py                 # Single-simulation runner (TAMULauncher worker)
 ├── setup_aces.sh              # ACES environment bootstrap script
 ├── check_outputs.py           # Post-run validation and integrity checker
 │
 ├── parse_slurm.py             # Parse sacct output → slurm_timing.csv
-├── aggregate.py               # 1,520 JSON logs + timing → run_summary.csv
+├── aggregate.py               # 2,888 JSON logs + timing → run_summary.csv
 ├── timing_analysis.py         # Compute throughput/parallelism metrics & curves
 ├── analyze.py                 # Grouped statistics, penalty stratification
 ├── plots.py                   # 8 presentation figures
@@ -106,9 +106,9 @@ SugarCluster/
 ├── slurm_tamulauncher_full.txt# Raw sacct output from TAMULauncher job
 ├── jobs.csv                   # Job manifest (job_id → config → params)
 │
-├── configs/                   # 1,520 generated .config JSON files
-├── commands.txt               # 1,520 TAMULauncher command lines
-├── data/                      # 1,520 simulation JSON log outputs
+├── configs/                   # 2,888 generated .config JSON files
+├── commands.txt               # 2,888 TAMULauncher command lines
+├── data/                      # 2,888 simulation JSON log outputs
 ├── timing/                    # Per-batch CSVs (SLURM) & per-sim JSONs (TAMULauncher)
 ├── results/                   # All analysis outputs (CSVs)
 └── plots/                     # 8 presentation figures (PNG)
@@ -140,7 +140,7 @@ Run the generation script locally or on the login node:
 uv run python generate_configs.py
 ```
 This generates:
-- `configs/*.config` — 1,520 minimal JSON configs containing only overridden parameters.
+- `configs/*.config` — 2,888 minimal JSON configs containing only overridden parameters.
 - `jobs.csv` — A central database mapping job IDs to parameter combinations.
 
 If using TAMULauncher, generate the command list:
@@ -155,7 +155,7 @@ This creates `commands.txt` (using explicit Unix LF endings to prevent parser cr
 Upload the code and configs using `make push_code` or `rsync`. On ACES:
 
 #### Option A: TAMULauncher Backend
-TAMULauncher runs all 1,520 tasks concurrently as single-core workers using a master-worker schema.
+TAMULauncher runs all 2,888 tasks concurrently as single-core workers using a master-worker schema.
 ```bash
 # Bootstrap the virtual environment
 bash setup_aces.sh
@@ -163,10 +163,10 @@ bash setup_aces.sh
 # Submit the TAMULauncher job
 sbatch -A 155415875505 submit_tamulauncher.slurm
 ```
-*Note: This requests 8 nodes with 16 tasks per node (128 slots) to process the sweep.*
+*Note: This requests 20 nodes with 8 tasks per node (160 slots) to process the sweep.*
 
 #### Option B: SLURM Job Array Backend
-SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **30 simulations per SLURM task**, resulting in 51 total tasks.
+SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **40 simulations per SLURM task**, resulting in 73 total tasks.
 ```bash
 # Bootstrap the virtual environment
 bash setup_aces.sh
@@ -204,18 +204,18 @@ Run `make all` to run all parsing and statistics steps:
 
 ## Head-to-Head Comparison Results
 
-All 1,520 simulations ran successfully on ACES using both backends:
+All 2,888 simulations ran successfully on ACES using both backends:
 
 | Metric | SLURM Job Array Backend | TAMULauncher Backend |
 | :--- | :--- | :--- |
-| **Total Simulations** | 1,520 | 1,520 |
-| **Wall Clock Execution** | 5 min 16 sec (316s) | **60 seconds** |
-| **Parallelism Factor** | 20.9× | **70.0×** |
-| **Effective Throughput** | 17,316 sims/hour | **91,144 sims/hour** |
-| **Startup / Exec Overhead**| 6.0% (8.6s interpreter startup) | **~0.0%** (direct run) |
-| **Queue Concurrency Cap** | 40 jobs (requires hybrid batches) | None (single job container) |
+| **Total Simulations** | 2,888 | 2,888 |
+| **Wall Clock Execution** | 6 min 22 sec (383s) | **3 min 33 sec (213s)** |
+| **Parallelism Factor** | 22.5× | **43.7×** |
+| **Effective Throughput** | 27,163 sims/hour | **48,801 sims/hour** |
+| **Startup / Exec Overhead**| ~4.5% (interpreter startup) | **~0.0%** (direct run) |
+| **Queue Concurrency Cap** | 50 jobs (requires hybrid batches) | None (single job container) |
 | **Cluster Portability** | Universal SLURM compatibility | TAMU ACES specific |
-| **Queue Wait Time** | **Near-instant** | ~30 mins (larger node demand) |
+| **Queue Wait Time** | **Near-instant** | **Near-instant** (distributed load) |
 
 ### Key Scientific Findings
 - **Disease Metabolism Penalty Dominates:** If metabolism penalty is `0.0`, survival rate is 100% to $t=1000$ across all 8 frameworks. Any non-zero penalty (`0.1` to `3.0`) leads to **89% instant extinction** at $t=1$.

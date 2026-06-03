@@ -103,14 +103,14 @@ Global concurrency cap of 50 running jobs limits true parallelism.
 │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  ...  ┌──────┐  │
 │  │ sim1 │ │ sim2 │ │ sim3 │ │ sim4 │       │s2888 │  │
 │  └──────┘ └──────┘ └──────┘ └──────┘       └──────┘  │
-│          4 nodes × 16 tasks = 64 concurrent          │
+│          20 nodes × 8 tasks = 160 concurrent         │
 └──────────────────────────────────────────────────────┘
 ```
 
 | Metric | Value |
 | :--- | :--- |
 | **Total simulations** | 2,888 |
-| **Concurrency** | 64 (4 nodes × 16/node) |
+| **Concurrency** | 160 (20 nodes × 8/node) |
 | **Total wall time** | **3 min 33 sec** (submit → last sim) |
 | **Serial equivalent** | 9,313 seconds (155.2 min) |
 | **Parallelism factor** | **43.7×** |
@@ -151,7 +151,7 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 
 ## Results: Timing Breakdown
 
-![timing](plots/timing_by_penalty.png)
+![duration](plots/sim_duration_hist.png) ![timing](plots/timing_by_penalty.png)
 
 | Penalty | Mean Duration | Outcome |
 | :--- | :--- | :--- |
@@ -201,7 +201,7 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 | Problem | Fix |
 | :--- | :--- |
 | **QOS job limit** (2,888 jobs > max array size) | Hybrid batching: 73 tasks × 40 sims → then switched to TAMULauncher |
-| **ACES global concurrency cap** (50 jobs) | TAMULauncher bypasses this entirely |
+| **ACES global concurrency cap** (80 jobs) | TAMULauncher bypasses this entirely |
 | **TAMULauncher queue wait** | Large resource ask (64 CPU) → longer queue time |
 | **Misleading Log**| It says process got killed, so I proceed to debug OOM, turns out it's normal TAMULauncher teardown behavior |
 | **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
@@ -251,4 +251,4 @@ sweep.toml          →    generate_configs.py    →    2,888 configs
 
 ---
 
-*Repository: github.com/your/cpsc4520-project · SLURM job: 1737370 · TAMULauncher job: 1737571*
+*Repository: github.com/roy-y-2023/cpsc4520-project · SLURM job: 1737370 · TAMULauncher job: 1737571*

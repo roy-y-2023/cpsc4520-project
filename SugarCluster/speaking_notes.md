@@ -13,9 +13,11 @@
 
 ## Slide 2: Agenda (0:20–0:30)
 
-> Quick roadmap: overview and research questions, then our distributed
-> architecture, results with timing stats, challenges we ran into during
-> engineering, and future work. Eight minutes total.
+> Quick roadmap for our 8-minute presentation: overview and research questions, 
+> then our distributed middleware architecture, followed by a head-to-head 
+> comparison of our two execution approaches. After that, we will discuss 
+> our timing stats, scientific findings, engineering challenges, and wrap up 
+> with future work.
 
 ---
 
@@ -24,206 +26,238 @@
 > Sugarscape is an agent-based simulation where agents move around a grid
 > collecting resources called "sugar" and "spice." They can catch diseases,
 > trade, reproduce, and die. Our goal was to run systematic parameter sweeps
-> at scale to answer two questions.
+> at scale to answer two main questions:
 
 > First: which disease parameters — transmission chance, tag string length,
 > immune system strength, and metabolism penalty — maximize or minimize the
 > spread of infection?
+
 > Second: how do socio-economic factors like wealth inequality interact with
 > pandemics? Does an ethical framework like altruism or egoism change the
 > outcome?
 
-> The scale: we swept 3 values for 3 disease knobs and 7 values for the
-> metabolism penalty across 8 ethical frameworks — that's 1,512 disease combinations
-> plus 8 baseline runs without disease. Total: 1,520 simulations, 1,000 timesteps
-> each. We actually ran this whole sweep twice using two different execution engines
-> to compare them — which is a key part of the distributed systems story.
+> To answer these, we swept 5 transmission chances, 3 tag lengths, 3 immunity 
+> lengths, and 8 metabolism penalties across 8 ethical frameworks. That is 
+> 2,880 disease combinations plus 8 baseline runs without disease, for a total of 
+> 2,888 simulations. We ran this entire sweep twice, once using standard SLURM 
+> job arrays and once using TAMULauncher, allowing us to compare the two 
+> distributed system strategies.
 
 ---
 
-## Slide 4: Architecture (1:30–3:00)
+## Slide 4: Architecture (1:30–2:30)
 
-> This is the middleware pipeline. Everything is driven by a single TOML file
-> called sweep.toml. It declares the parameter knobs and their values. No
-> hard-coded Python — adding a new knob means adding one line of TOML.
+> This is our middleware pipeline, designed to be fully declarative. Everything 
+> is driven by a single TOML file called sweep.toml. There are no hard-coded 
+> parameter values in Python. Adding a new knob simply requires adding one line 
+> in the TOML file and one line in our config template.
 
-> generate_configs.py reads that TOML, computes the cartesian product, and
-> emits 1,520 minimal JSON config files plus a jobs.csv manifest. "Minimal"
-> means each config only contains the keys that differ from Sugarscape's
-> internal defaults — this keeps configs small and avoids cascading when
-> Sugarscape's defaults change upstream.
+> generate_configs.py reads sweep.toml, computes the Cartesian product, and
+> emits 2,888 minimal JSON config files along with a jobs.csv manifest. The config 
+> files only store keys that differ from Sugarscape's defaults, which prevents 
+> configuration bloat.
 
-> We then had two submission strategies. The first is a SLURM job array —
-> the traditional approach. The second is TAMULauncher, an ACES-specific
-> parallel task runner. We ran both and can compare them directly.
-
-> After both runs, aggregate.py parses everything into a single run_summary.csv
-> and plots.py generates the figures.
+> From there, we submit the runs using two strategies: standard SLURM Job Array 
+> (submit.slurm) or TAMULauncher (submit_tamulauncher.slurm). Once the jobs 
+> finish, we pull the results, aggregate.py parses the JSON outputs and timing logs 
+> into run_summary.csv, and plots.py generates the 8 presentation figures.
 
 ---
 
-## Slide 5: SLURM Job Array (3:00–4:00)
+## Slide 5: Approach 1: SLURM Job Array (2:30–3:30)
 
-> Here's what the SLURM job array execution looked like. This is real data
-> from SLURM's sacct command for job array 1730737.
+> Here's our first submission strategy: a SLURM Job Array. This slide displays 
+> real data from SLURM's sacct command for job array 1737370.
 
-> The key constraint we hit: ACES has a hard QOS limit on job array size,
-> and separately, a global concurrency limit of 40 running jobs at once.
-> So we couldn't submit 1,520 individual tasks. The workaround was hybrid
-> batching — bundle 30 simulations into each task, giving 51 tasks total.
-> That fits under the limits.
+> The primary bottleneck here was the ACES Quality of Service limits: the maximum 
+> array size was too small to submit all 2,888 simulations as separate tasks, 
+> and there is a global concurrency cap of 50 running jobs.
 
-> Results: 51 tasks across 11 ACES nodes. Total wall time — 5 minutes and
-> 16 seconds. Serial equivalent — 6,599 seconds, or 110 minutes. That's a
-> 20.9× speedup, and 17,316 simulations per wall-clock hour.
+> To work around this, we implemented hybrid batching, bundling 40 simulations 
+> into each SLURM task, resulting in 73 tasks total.
 
-> Overhead is 6% — Python interpreter startup and config loading costs about
-> 8.6 seconds per batch of 30 sims. Everything else is actual simulation work.
-
----
-
-## Slide 6: TAMULauncher (4:00–5:00)
-
-> The second approach was TAMULauncher. Instead of bundling simulations into
-> tasks, we generated a commands.txt file with one line per simulation — 1,520
-> lines — and let TAMULauncher dispatch them across all available cores.
-
-> No job array limit. No batching complexity. TAMULauncher checkpoints progress
-> and automatically skips sims that already completed on resubmission.
-
-> Results: 60 seconds wall time. That's a 5× speedup over the SLURM approach.
-> Throughput: 91,144 simulations per wall-hour — five times better.
-> The parallelism factor is 70× — because there's no batching overhead, and
-> sims run truly one-per-core concurrently.
-
-> The trade-off: we requested 8 nodes with 16 tasks per node for 128
-> concurrent slots. On a busy ACES cluster, that large resource request means
-> a longer queue wait — about 30 minutes before the job even started. So
-> TAMULauncher won on raw throughput but lost on time-to-start.
+> With this hybrid batching, the sweep ran across 12 unique ACES nodes. The total 
+> wall time was 6 minutes and 22 seconds. The serial equivalent execution is 
+> 8,617 seconds (or 143.6 minutes), meaning we achieved a 22.5× speedup and 
+> an effective throughput of 27,163 simulations per wall-clock hour.
 
 ---
 
-## Slide 7: Head-to-Head Comparison (5:00–5:30)
+## Slide 6: Approach 2: TAMULauncher (3:30–4:30)
 
-> Here's the direct comparison. TAMULauncher is faster by every compute
-> metric — 60 seconds versus 5 minutes, 91K versus 17K sims per hour,
-> 70× versus 20× parallelism.
+> Our second submission strategy is TAMULauncher, a custom task launcher on ACES. 
+> Instead of bundling simulations into hybrid tasks, we generate a commands.txt 
+> file with one command line per simulation — 2,888 lines total — and let 
+> TAMULauncher automatically dispatch them.
 
-> But the queue wait is real. Requesting 128 CPUs across 8 nodes put us lower
-> in the priority queue. TAMULauncher submitted at 6 PM and was still PENDING
-> at 6:45 PM. SLURM job arrays with smaller individual resource asks clear
-> the queue much faster.
+> This approach bypasses SLURM job array size limits and requires no complex 
+> batching logic. It also supports automatic check-pointing, skipping 
+> already-completed simulations on resubmission.
 
-> Portability also matters: SLURM job arrays work on any cluster running SLURM.
-> TAMULauncher is ACES-specific — it wouldn't run on TACC Frontera or AWS,
-> for example.
-
-> Our recommendation: TAMULauncher for large sweeps where wall time matters
-> more than queue time. SLURM job arrays when you need faster queue clearance
-> or need to run on a non-ACES cluster.
+> We requested 20 nodes with 8 tasks per node, giving us 160 concurrent slots. 
+> The sweep completed in just 3 minutes and 33 seconds of wall time. The serial 
+> equivalent is 9,313 seconds (or 155.2 minutes), representing a 43.7× speedup 
+> and an effective throughput of 48,801 simulations per wall-clock hour.
 
 ---
 
-## Slide 8: Results — SLURM Cumulative Completion (5:30–6:00)
+## Slide 7: SLURM vs TAMULauncher: Head-to-Head (4:30–5:15)
 
-> Here's the cumulative completion plot from the SLURM run. The solid blue
-> line is real execution — you can see the staircase pattern as batches of
-> 30 sims complete together. The dashed red line is theoretical perfect
-> parallelism. The gap shows ACES scheduling overhead.
+> Comparing the two backends head-to-head, TAMULauncher is the clear winner for 
+> raw execution speed: it completes the sweep in 3 minutes 33 seconds compared 
+> to SLURM's 6 minutes 22 seconds. This is a 1.8× improvement in wall time, 
+> nearly doubling the throughput from 27K to 48K simulations per hour.
 
----
+> However, scheduling trade-offs are important. While requesting 128 cores with 
+> high density (16 tasks per node) in previous tests led to memory contention 
+> and killed tasks, our updated request of 160 CPUs across 20 nodes (reducing 
+> density to 8 tasks per node) resolved the issue and allowed near-instant queue clearance.
 
-## Slide 9: Results — Timing Breakdown (6:00–6:30)
-
-> Looking at per-simulation timing, there's a clear bimodal distribution.
-> Simulations either run to completion at around 24.4 seconds for penalty=0,
-> or they end in under half a second.
-
-> The box plot tells the story: penalty=0 runs take ~24.4 seconds because
-> agents survive to timestep 1,000. Penalty levels from 0.1 to 3.0 cause
-> instant mass extinction — all agents die at timestep 1 because their
-> metabolism cost exceeds the available sugar.
-
-> This was a calibration challenge. Our original design used penalties of 0,
-> 2, and 5 — but at penalty 5, everyone died instantly. We expanded the sweep
-> to study intermediate penalties including 0.1, 0.25, 0.5, and 1.0.
-> Even a tiny penalty of 0.1 leads to the same 89% extinction rate at timestep 1.
+> Additionally, portability is a key factor. SLURM job arrays are portable to 
+> almost any cluster, whereas TAMULauncher is specific to ACES. We recommend 
+> TAMULauncher for massive sweeps where execution wall time dominates, and SLURM 
+> Job Arrays when queue wait times or portability are the primary concerns.
 
 ---
 
-## Slide 10: Results — Heatmaps (6:30–7:00)
+## Slide 8: Results: Distributed Systems (5:15–5:45)
 
-> Here are the scientific heatmaps for the penalty=0 subset — the only
-> configuration where we can actually observe framework differences.
+> This plot shows the cumulative completion curves for both runs. 
 
-> Each cell shows peak infection percentage for a given transmission chance
-> and immune system length. Red is 100% infected, yellow is lower. All 8
-> frameworks look nearly identical — the disease physics dominate. Ethical
-> decision-making doesn't register.
+> The blue staircase line represents the SLURM Job Array, where the steps clearly 
+> reflect our 40-simulation hybrid batches completing.
 
-> Because of our scaled-up disease initialization with 25 starting diseases
-> and 10 per agent, almost all agents start infected. The initial pandemic
-> load simply overwhelms any transmission or immunity variations.
+> The green line shows TAMULauncher, which has a much smoother and steeper curve 
+> because tasks complete individually. It finishes much earlier, at 3 minutes 33 seconds.
 
----
-
-## Slide 11: Results — Survival & Inequality (7:00–7:20)
-
-> Survival rate stacked by penalty: penalty=0 is solid across all frameworks,
-> near 100%. Penalties from 0.1 to 3.0 are around 11% — only the parameter
-> combos with the longest immune system and shortest disease tag survive.
-
-> For inequality: delta Gini ≈ -0.01 for penalty=0. Wealth inequality actually
-> slightly decreases under the pandemic. The flat metabolic load acts as a
-> wealth compression mechanism. The effect is small — disease physics dominate
-> over ethics and economics alike.
+> The dashed red line represents the theoretical perfect parallelism baseline, 
+> and the gap between the curves and the baseline highlights scheduler dispatch 
+> overhead on ACES.
 
 ---
 
-## Slide 12: Challenges (7:20–8:00)
+## Slide 9: Results: Timing Breakdown (5:45–6:15)
 
-> Several platform issues bit us during implementation.
+> Looking at per-simulation duration, we see a clear bimodal distribution, 
+> shown in the histogram on the left and the boxplot on the right.
 
-> The QOS job limit was the first — ACES rejected our initial 1,520-task array.
-> The initial fix was hybrid batching. The better fix was TAMULauncher.
+> Simulations either run to completion at around 17 seconds for penalty=0 where 
+> all agents survive to the 1,000-timestep limit, or they end in under a second.
 
-> The global concurrency cap of 40 jobs is a separate limit. TAMULauncher
-> bypasses it entirely since it's a single job that manages its own internal
-> concurrency.
-
-> Windows-to-Linux friction: backslash paths, CRLF line endings in commands.txt —
-> TAMULauncher silently fails if commands.txt has Windows line endings.
-> We enforce LF-only in generate_commands.py.
-
-> $SLURM_SUBMIT_DIR doesn't point where you think — it resolves to a temp
-> staging directory. We switched to PROJECT_DIR, an absolute path set as an
-> environment variable.
-
-> And the interesting TAMULauncher finding: requesting a lot of nodes means a
-> long queue wait. The 8-node job sat pending for 30+ minutes. Next time we'd
-> request fewer nodes with higher tasks-per-node to reduce the resource ask
-> and clear the queue faster.
+> Any non-zero disease metabolism penalty — from 0.001 up to 0.5 — causes instant 
+> mass extinction at timestep 1 for 77.8% of configurations because the metabolic 
+> cost immediately drains the agents' resources. The only survivors in these 
+> configurations are agents with maximum immunity lengths and shortest disease 
+> tag lengths.
 
 ---
 
-## Slide 13: Future Work (8:00–8:45)
+## Slide 10: Results: Scientific Findings (6:15–6:45)
 
-> Five directions.
+> Here are the infection heatmaps for the penalty=0 subset, stratified across the 
+> 8 ethical frameworks. Each cell shows the peak sick percentage based on 
+> transmission chance and immunity length.
 
-> First: tune TAMULauncher resource requests — fewer nodes, more tasks per node,
-> to reduce queue wait while keeping high throughput.
-> Second: sweep more parameters — environmental knobs like resource peak
-> locations and pollution rates.
-> Third: multiple seeds per config. With 91K sims/wall-hour we demonstrated,
-> running 30 seeds per config for 45,600 total sims would take about 30 minutes.
-> Fourth: a live dashboard monitoring jobs on ACES in real time.
-> Fifth: Singularity containers for zero-install portability to other clusters.
+> Transmission of 1.0 combined with an immunity length of 10 leads to 100% 
+> infection peaks. A transmission chance of 0.05 and immunity length of 60 
+> minimizes the spread.
+
+> Crucially, all 8 ethical frameworks look nearly identical. Because we initialize 
+> the runs with 5 starting diseases and 5 diseases per agent, the initial pandemic 
+> load simply overwhelms any behavioral differences. Disease physics dominates 
+> ethical decision-making.
 
 ---
 
-## Slide 14: Thank You (8:45–9:00)
+## Slide 11: Results: Survival by Penalty (6:45–7:05)
 
-> To recap: SugarCluster is a TOML-driven middleware pipeline. 1,520 simulations,
-> run with two execution strategies. SLURM: 5 minutes 16 seconds, 20.9×
-> parallelism. TAMULauncher: 60 seconds, 70× parallelism, but ~30 minutes
-> queue wait. All code is in the SugarCluster directory. Questions?
+> This slide displays the survival rate stacked by disease penalty level.
+
+> When the penalty is exactly 0, we see 100% survival across all frameworks.
+
+> But the moment any penalty is introduced (from 0.001 to 0.5), survival drops 
+> to a flat 22.2% across every single framework. Ethical frameworks do not 
+> change survival outcomes; the physical severity of the disease completely 
+> governs agent survival.
+
+---
+
+## Slide 12: Results: Inequality (Gini Coefficient) (7:05–7:25)
+
+> We also analyzed wealth inequality by looking at the change in the Gini coefficient.
+
+> Interestingly, under a pandemic with penalty=0, wealth inequality slightly 
+> decreases, with a mean delta Gini of approximately −0.005.
+
+> The flat metabolic penalty acts as a wealth compression mechanism, squeezing 
+> the resources of wealthier agents relatively more. However, the effect is tiny, 
+> confirming that disease physics and basic metabolic parameters dominate over 
+> ethical behavior.
+
+---
+
+## Slide 13: Challenges: Engineering Lessons (7:25–7:55)
+
+> We encountered several platform challenges during implementation.
+
+> First, ACES job array and concurrency limits forced us to use hybrid batching 
+> for SLURM, which we bypassed using TAMULauncher.
+
+> We also ran into Windows-to-Linux friction: path separators (`\`) and Windows 
+> CRLF line endings in commands.txt caused silent TAMULauncher worker failures, 
+> which we fixed by forcing Unix LF line endings in our generators.
+
+> Additionally, `$SLURM_SUBMIT_DIR` resolves to a temporary staging directory 
+> on ACES, so we switched to using an absolute `PROJECT_DIR` environment variable. 
+> Finally, we learned to interpret TAMULauncher's log outputs, where normal 
+> teardown looked like process termination but was actually normal behavior.
+
+---
+
+## Slide 14: Challenges: Middleware Design (7:55–8:15)
+
+> A key design goal was to keep our middleware reusable and decoupled from this 
+> specific experiment.
+
+> We succeeded by separating declarative configuration in sweep.toml from the 
+> Python generator and execution backends.
+
+> Adding a new parameter knob requires only a single line in the TOML file and 
+> one line in the config template. Swapping the execution engine is as simple as 
+> switching from submit.slurm to submit_tamulauncher.slurm without changing 
+> any simulation or middleware code.
+
+---
+
+## Slide 15: Future Work (8:15–8:45)
+
+> We propose four areas for future research.
+
+> First, expanding the parameter sweep to cover environmental variables such as 
+> resource peak locations and pollution rates, or agent genetics.
+
+> Second, running multiple seeds per configuration. Since we demonstrated a 
+> throughput of 48K simulations per hour, running 30 seeds per config (over 86K runs) 
+> is now fully tractable in under two hours.
+
+> Third, building a live dashboard to monitor ACES jobs in real time.
+
+> Fourth, containerizing the setup using Singularity/Docker for zero-install 
+> cluster portability.
+
+---
+
+## Slide 16: Thank You / Questions (8:45–9:00)
+
+> In summary, SugarCluster is a TOML-driven middleware pipeline that ran 2,888 
+> simulations across two different cluster execution engines. SLURM completed 
+> in 6 minutes 22 seconds with 22.5× parallelism, while TAMULauncher completed 
+> in 3 minutes 33 seconds with 43.7× parallelism and near-instant queue clearance.
+
+> All code and analysis scripts are located in the SugarCluster directory.
+
+> Thank you, and I am happy to take any questions.
+
+---
+
+*Repository: github.com/roy-y-2023/cpsc4520-project · SLURM job: 1737370 · TAMULauncher job: 1737571*
