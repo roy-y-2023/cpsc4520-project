@@ -1,5 +1,6 @@
 import json
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
@@ -35,19 +36,11 @@ def load_timing() -> "pd.DataFrame":
     File locations (pulled from cluster into local timing/ via pull_data):
       - timing/timing_sim_<id>_slurm.json — SLURM array backend (run_batch.py → run_sim.py)
       - timing/timing_sim_<id>_tamu.json  — TAMULauncher backend (run_sim.py direct)
-      - timing/timing_*.csv               — legacy batch CSVs (backward compat only)
 
     When the same job_id appears in both slurm and tamu files, the tamu record
     is kept (it contains richer wall-clock start/end timestamps).
     """
     chunks = []
-
-    # Legacy batch CSV files (kept for backward compat; no longer written)
-    for f in sorted(TIMING.glob("timing_*.csv")):
-        df = pd.read_csv(f)
-        if "backend" not in df.columns:
-            df["backend"] = "slurm_legacy"
-        chunks.append(df)
 
     # SLURM-array per-sim JSONs
     slurm_df = _load_timing_jsons("timing_sim_*_slurm.json")
@@ -64,9 +57,9 @@ def load_timing() -> "pd.DataFrame":
 
     combined = pd.concat(chunks, ignore_index=True)
 
-    # De-duplicate by job_id: tamu > slurm > legacy (last wins after sort)
+    # De-duplicate by job_id: tamu > slurm (last wins after sort)
     if "job_id" in combined.columns and "backend" in combined.columns:
-        priority = {"slurm_legacy": 0, "slurm": 1, "tamu": 2}
+        priority = {"slurm": 1, "tamu": 2}
         combined["_pri"] = combined["backend"].map(lambda b: priority.get(b, 0))
         combined = (
             combined.sort_values("_pri")
@@ -91,31 +84,42 @@ def summarize_json(path):
     final = records[-1]
     final_ts = final["timestep"]
     survived = final_ts >= 999  # allow off-by-one
-    pop_values = [r["population"] for r in records]
-    sick_values = [r.get("sickAgentsPercentage", 0) for r in records]
-    gini_values = [r.get("giniCoefficient", 0) for r in records]
-    happy_values = [r.get("meanHappiness", 0) for r in records]
-    wealth_values = [r.get("meanWealth", 0) for r in records]
-    disease_deaths = [r.get("agentDiseaseDeaths", 0) for r in records]
-    starvation_deaths = [r.get("agentStarvationDeaths", 0) for r in records]
-    combat_deaths = [r.get("agentCombatDeaths", 0) for r in records]
-    aging_deaths = [r.get("agentAgingDeaths", 0) for r in records]
-    agent_deaths = [r.get("agentDeaths", 0) for r in records]
 
-    if sick_values:
-        peak_idx = max(range(len(sick_values)), key=lambda i: sick_values[i])
-    else:
-        peak_idx = 0
+    # Single pass over records — collects all per-timestep series and accumulators
+    pop_values: list[float] = []
+    sick_values: list[float] = []
+    gini_values: list[float] = []
+    happy_values: list[float] = []
+    wealth_values: list[float] = []
+    peak_sick = 0.0
+    peak_idx = 0
+    total_disease = total_starvation = total_combat = total_aging = total_deaths = 0
+    for i, r in enumerate(records):
+        pop_values.append(r.get("population", 0))
+        gini_values.append(r.get("giniCoefficient", 0))
+        happy_values.append(r.get("meanHappiness", 0))
+        wealth_values.append(r.get("meanWealth", 0))
+        s = r.get("sickAgentsPercentage", 0)
+        sick_values.append(s)
+        if s > peak_sick:
+            peak_sick = s
+            peak_idx = i
+        total_disease += r.get("agentDiseaseDeaths", 0)
+        total_starvation += r.get("agentStarvationDeaths", 0)
+        total_combat += r.get("agentCombatDeaths", 0)
+        total_aging += r.get("agentAgingDeaths", 0)
+        total_deaths += r.get("agentDeaths", 0)
 
+    n = len(sick_values)
     return {
         "final_timestep": final_ts,
         "survived": survived,
         "time_to_extinction": final_ts if not survived else math.nan,
-        "peak_sick_percentage": max(sick_values) if sick_values else 0,
-        "peak_sick_timestep": sick_values[peak_idx] if sick_values else 0,
-        "avg_sick_percentage": sum(sick_values) / len(sick_values) if sick_values else 0,
-        "final_population": final["population"] if "population" in final else 0,
-        "initial_population": initial["population"] if "population" in initial else 0,
+        "peak_sick_percentage": peak_sick,
+        "peak_sick_timestep": sick_values[peak_idx] if n else 0,
+        "avg_sick_percentage": sum(sick_values) / n if n else 0,
+        "final_population": final.get("population", 0),
+        "initial_population": initial.get("population", 0),
         "final_gini": final.get("giniCoefficient", 0),
         "final_happiness": final.get("meanHappiness", 0),
         "final_meanWealth": final.get("meanWealth", 0),
@@ -125,11 +129,11 @@ def summarize_json(path):
         "initial_meanWealth": initial.get("meanWealth", 0),
         "wealth_gini_change": final.get("giniCoefficient", 0) - initial.get("giniCoefficient", 0),
         "happiness_decline": initial.get("meanHappiness", 0) - final.get("meanHappiness", 0),
-        "total_disease_deaths": sum(disease_deaths),
-        "total_starvation_deaths": sum(starvation_deaths),
-        "total_combat_deaths": sum(combat_deaths),
-        "total_aging_deaths": sum(aging_deaths),
-        "total_deaths": sum(agent_deaths),
+        "total_disease_deaths": total_disease,
+        "total_starvation_deaths": total_starvation,
+        "total_combat_deaths": total_combat,
+        "total_aging_deaths": total_aging,
+        "total_deaths": total_deaths,
     }
 
 
@@ -155,31 +159,42 @@ def add_baseline_deltas(df):
     return df
 
 
+def _process_sim(args):
+    """Worker used by the thread pool: returns (meta-dict, summary-dict) or None."""
+    json_path, meta = args
+    summary = summarize_json(json_path)
+    if not summary:
+        return None
+    row = {
+        "job_id": meta["job_id"],
+        "run_type": meta["run_type"],
+        "framework": meta["framework"],
+        "transmission": meta.get("diseaseTransmissionChance"),
+        "tagLength": meta.get("diseaseTagStringLength"),
+        "immunity": meta.get("agentImmuneSystemLength"),
+        "penalty": meta.get("diseaseSugarMetabolismPenalty"),
+    }
+    row.update(summary)
+    return row
+
+
 def main():
     jobs = load_jobs()
     timing = load_timing()
 
     stem_to_meta = jobs.set_index("config_stem").to_dict(orient="index")
 
-    rows = []
-    for json_path in sorted(DATA.glob("sim_*.json")):
-        stem = json_path.stem.removeprefix("sim_")  # configs are keyed without the sim_ prefix
-        meta = stem_to_meta.get(stem)
-        if meta is None:
-            continue
+    work = [
+        (json_path, stem_to_meta[json_path.stem.removeprefix("sim_")])
+        for json_path in sorted(DATA.glob("sim_*.json"))
+        if json_path.stem.removeprefix("sim_") in stem_to_meta
+    ]
 
-        summary = summarize_json(json_path)
-        row = {
-            "job_id": meta["job_id"],
-            "run_type": meta["run_type"],
-            "framework": meta["framework"],
-            "transmission": meta.get("diseaseTransmissionChance"),
-            "tagLength": meta.get("diseaseTagStringLength"),
-            "immunity": meta.get("agentImmuneSystemLength"),
-            "penalty": meta.get("diseaseSugarMetabolismPenalty"),
-        }
-        row.update(summary)
-        rows.append(row)
+    rows = []
+    with ThreadPoolExecutor() as pool:
+        for result in pool.map(_process_sim, work):
+            if result is not None:
+                rows.append(result)
 
     df = pd.DataFrame(rows)
 

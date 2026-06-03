@@ -155,6 +155,8 @@ models = [
 ]
 ```
 
+Note: if you're settings resulted in more sims and/or longer run, you need to adjust the time ceiling in `submit_tamulauncher.slurm` and `submit.slurm` accordingly.
+
 ### 2. Generate Configs & Commands
 
 With the Makefile, configuration and command generation are automatically handled as dependencies when submitting jobs. However, they can be run manually on the server (or locally):

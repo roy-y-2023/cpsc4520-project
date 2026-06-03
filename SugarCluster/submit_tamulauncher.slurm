@@ -23,9 +23,9 @@
 
 #SBATCH --job-name=sugarscape-tamulauncher
 #SBATCH --nodes=20
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=12
 #SBATCH --time=00:30:00
-#SBATCH --mem=3G
+#SBATCH --mem=2G
 #SBATCH --output=logs/tamulauncher-%j.out
 #SBATCH --error=logs/tamulauncher-%j.err
 
@@ -38,7 +38,7 @@ set -euo pipefail
 # ---------------------
 
 PROJECT_DIR="${PROJECT_DIR:-}"
-COMMANDS_PER_NODE="${COMMANDS_PER_NODE:-8}"
+COMMANDS_PER_NODE="${COMMANDS_PER_NODE:-12}"
 
 # Strip /SugarCluster from PROJECT_DIR if accidentally included
 if [ -n "$PROJECT_DIR" ] && [[ "$PROJECT_DIR" == */SugarCluster* ]]; then

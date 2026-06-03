@@ -29,9 +29,12 @@ for candidate in python3.12 python3 python; do
 done
 
 if [ -z "$PYTHON" ]; then
-    echo "No Python 3.11+ found. Trying module load..."
-    module load GCCcore/13.3.0 Python/3.12.3
-    PYTHON="python3"
+    echo "ERROR: No Python 3.11+ found in your PATH."
+    echo "Please load the module manually before running this script:"
+    echo ""
+    echo "    module load GCCcore/13.3.0 Python/3.12.3"
+    echo ""
+    exit 1
 fi
 
 echo "Using: $($PYTHON --version)"

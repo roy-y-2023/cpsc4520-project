@@ -128,7 +128,6 @@ transparently — but requesting 64 CPUs means a longer queue wait even during n
 
 **TAMULauncher (green)** — 2,888 individual sims, per-sim end timestamps. Finishes at **3:33**.
 **SLURM Job Array (blue)** — 73 batch tasks via `sacct`. Staircase reflects 40-sim batches. Finishes at **6:22**.
-**Theoretical (red dashed)** — perfect parallelism baseline from per-sim durations.
 
 ---
 

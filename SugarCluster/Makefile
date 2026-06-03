@@ -85,15 +85,16 @@ clean:
 	rm -f jobs.csv commands.txt
 	rm -f logs/*.out logs/*.err
 	rm -f timing/*.json timing/*.csv
-	rm -f sim_*.json timing_*.json submit_time_*.txt
+	rm -f sim_*.json timing_*.json submit_time_*.txt slurm_*full.txt
 	rm -f results_summary.csv retry.csv
 	@echo "Cleaned generated files"
 
 push-code:
-	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' --exclude 'results' --exclude 'plots'  --exclude 'timing' --exclude 'data' cpsc4520-project/ login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/
+	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' --exclude 'results' --exclude 'plots'  --exclude 'timing' --exclude 'data' --exclude 'configs' --exclude 'jobs.csv' cpsc4520-project/ login.aces.hprc.tamu.edu:/scratch/group/p.cis260910.000/cpsc4520-project/
 
 pull-data:
-	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/sim_*.json data/
-	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/timing_sim_*.json timing/
-	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/submit_time_*.txt ./
-	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/slurm_*full.txt ./
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/sim_*.json data/ & \
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/timing_sim_*.json timing/ & \
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/submit_time_*.txt ./ & \
+	rsync -avz --ignore-missing-args login.aces.hprc.tamu.edu:$(PROJECT_DIR)/SugarCluster/slurm_*full.txt ./ & \
+	wait
