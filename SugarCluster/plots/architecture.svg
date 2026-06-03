@@ -90,7 +90,7 @@
             <rect x="46" y="58" width="20" height="24" rx="3" fill="#FFFFFF" />
             <rect x="52" y="64" width="20" height="24" rx="3" fill="#FFFFFF" />
         </g>
-        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">2,888 .config files</text>
+        <text x="108" y="65" font-size="22" font-weight="700" fill="#1E293B">2,168 .config files</text>
         <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">+ jobs.csv manifest</text>
     </g>
 
@@ -128,7 +128,7 @@
             <circle cx="46" cy="83" r="1.5" fill="#4F46E5"/>
         </g>
         <text x="108" y="65" font-size="22" font-weight="800" fill="#1E293B">ACES HPC Cluster</text>
-        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">Output: 2,888 JSON results</text>
+        <text x="108" y="95" font-size="16" font-weight="500" fill="#475569">Output: 2,168 JSON results</text>
     </g>
 
     <g transform="translate(660, 750)">

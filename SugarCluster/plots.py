@@ -244,11 +244,11 @@ def plot_survival_stacked():
     print("  saved survival_stacked.png")
 
 
-# ─── PLOT 7: Gini Delta for Penalty=0.001 ───────────────────────
+# ─── PLOT 7: Gini Delta for Penalty=0.1 ───────────────────────
 
 def plot_gini_penalty():
     df = load()
-    # Filter by penalty == 0.001 and only include survived runs
+    # Filter by penalty == 0.1 and only include survived runs
     disease = df[(df["run_type"] == "disease") & (df["penalty"] == 0.1) & (df["survived"] == True)].copy()
     disease["framework"] = pd.Categorical(disease["framework"], categories=FRAMEWORKS)
 
