@@ -46,7 +46,7 @@ fi
 # 4. Install dependencies
 source .venv/bin/activate
 pip install --upgrade pip
-pip install tomli
+pip install tomli pandas matplotlib seaborn
 
 # 5. Quick smoke test
 echo "=== Smoke test: running 5-timestep baseline ==="

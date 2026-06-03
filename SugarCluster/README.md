@@ -22,7 +22,7 @@ SugarCluster automates the entire distributed lifecycle, from configuration swee
             │ (SLURM Job Array)                            │ (TAMULauncher Backend)
             ▼                                              ▼
       submit.slurm                                generate_commands.py
-     (51 batch tasks)                                      │
+     (73 batch tasks)                                      │
             │                                              ▼
             │                                         commands.txt
             │                                              │
@@ -31,56 +31,78 @@ SugarCluster automates the entire distributed lifecycle, from configuration swee
             │                                     (160 worker concurrency)
             └────────────────────┬─────────────────────────┘
                                  ▼
-                         ACES HPC Cluster
+                          ACES HPC Cluster
                                  │
                                  ▼
-                     rsync data & timing JSONs
+                    sacct logs + simulation data
                                  │
                                  ▼
       aggregate.py  →  timing_analysis.py  →  analyze.py  →  plots.py
                                  │
                                  ▼
-                           plots/*.png
+                            plots/*.png
 ```
-
 ## Requirements
 
-- **Python 3.12+** with [uv](https://docs.astral.sh/uv/)
-- **Dependencies:** `pandas`, `matplotlib`, `seaborn`, `tomli` (see `pyproject.toml`)
+- **Python 3.12+**
+- **Dependencies:** `pandas`, `matplotlib`, `seaborn`, `tomli` (installed automatically via `make setup-server` or `uv sync` locally)
 
-## Quick Start
+## Quick Start (ACES Cluster Workflow)
+
+All steps of the simulation and analysis pipeline are designed to run directly on the ACES server.
+
+> [!IMPORTANT]
+> **Cluster Configuration:**
+> You **MUST** replace the account number `ACCOUNT=155415875505` and the project directory path `PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project` in the commands below with your own HPRC project account number and absolute cluster path.
+
+> [!WARNING]
+> **File/Inode Quotas:**
+> A full 2,888-simulation sweep creates a massive footprint of **10,000+ files** (configs, output JSON logs, worker outputs, and timing logs). Be mindful of your ACES group disk/inode quotas. Use `make clean` to purge intermediate configurations and outputs after your final analysis runs are finished.
+
+### 1. Setup on ACES
+Extract the project archive (or clone the repository) directly to your scratch space on the ACES cluster (e.g., under `/scratch/group/p.cis260910.000/cpsc4520-project/`).
+
+Navigate to the `SugarCluster` folder and bootstrap the environment:
+```bash
+cd SugarCluster
+make setup-server
+```
+*Note: This automatically creates a Python virtual environment and installs all dependencies (`tomli`, `pandas`, `matplotlib`, `seaborn`).*
+
+### 2. Run the Parameter Sweep
+Activate the virtual environment, then choose one of the two execution backends to generate configurations/commands and submit the job in a single command:
+
+#### Option A: TAMULauncher Backend (Recommended)
+This dispatch runs all 2,888 simulations concurrently across a master-worker pool (requests 20 nodes with 160 worker slots):
+```bash
+source .venv/bin/activate
+make submit-tamu ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
+```
+
+#### Option B: SLURM Job Array Backend
+This fallback runs simulations in hybrid batches of 40 simulations per job array task (73 tasks total):
+```bash
+source .venv/bin/activate
+make submit-slurm ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
+```
+
+### 3. Parse Metadata & Run Analytics Pipeline
+Once the jobs complete successfully, generate the analysis and presentation figures directly on the cluster:
 
 ```bash
-# Clone and enter the project
-cd SugarCluster
-uv sync
+# Verify all output logs were written successfully
+make check-outputs
 
-# 1. Generate configs from sweep specification
-uv run python generate_configs.py
+# Export job metadata from SLURM sacct (replace with your active Job ID)
+sacct -j <JOB_ID> > slurm_full.txt               # For Job Array backend
+# OR
+sacct -j <JOB_ID> > slurm_tamulauncher_full.txt  # For TAMULauncher backend
 
-# 2. Choose and execute an execution backend on ACES:
-
-# --- Option A: TAMULauncher (Recommended) ---
-# Generate commands.txt first (specifying the cluster project directory)
-PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
-  uv run python generate_commands.py
-# Submit the TAMULauncher script
-sbatch -A 155415875505 submit_tamulauncher.slurm
-
-# --- Option B: SLURM Job Array ---
-# Submit the hybrid job array script
-PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
-  sbatch -A 155415875505 submit.slurm
-
-# 3. Pull results back to your local machine
-make pull_data
-
-# 4. Parse SLURM timing data (requires sacct output)
-uv run python parse_slurm.py
-
-# 5. Run the analytics & plotting pipeline
+# Run the post-processing pipeline
 make all
 ```
+*Note: All results will be generated in `results/` and figures in `plots/` on the server. You can download the completed `plots/` folder to view the figures locally.*
+
 
 ## Project Structure
 
@@ -135,72 +157,73 @@ models = [
 
 ### 2. Generate Configs & Commands
 
-Run the generation script locally or on the login node:
+With the Makefile, configuration and command generation are automatically handled as dependencies when submitting jobs. However, they can be run manually on the server (or locally):
 ```bash
-uv run python generate_configs.py
+# Generate the 2,888 minimal config JSON files and jobs.csv manifest:
+make configs
+
+# Generate commands.txt for TAMULauncher (specifying the PROJECT_DIR on the cluster):
+make commands PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
 ```
 This generates:
 - `configs/*.config` — 2,888 minimal JSON configs containing only overridden parameters.
 - `jobs.csv` — A central database mapping job IDs to parameter combinations.
-
-If using TAMULauncher, generate the command list:
-```bash
-PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
-  uv run python generate_commands.py
-```
-This creates `commands.txt` (using explicit Unix LF endings to prevent parser crashes on Linux).
+- `commands.txt` — 2,888 simulation command lines (using Unix LF line endings to avoid cluster parsing issues).
 
 ### 3. Run on ACES
 
-Upload the code and configs using `make push_code` or `rsync`. On ACES:
+With the project folder extracted on the ACES cluster, everything can be executed directly on the server.
 
-#### Option A: TAMULauncher Backend
+#### Option A: TAMULauncher Backend (Recommended)
 TAMULauncher runs all 2,888 tasks concurrently as single-core workers using a master-worker schema.
-```bash
-# Bootstrap the virtual environment
-bash setup_aces.sh
 
-# Submit the TAMULauncher job
-sbatch -A 155415875505 submit_tamulauncher.slurm
+Using the Makefile target simplifies configuration generation, command generation, log cleanup, and job submission into one step:
+```bash
+make submit-tamu ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
 ```
 *Note: This requests 20 nodes with 8 tasks per node (160 slots) to process the sweep.*
 
 #### Option B: SLURM Job Array Backend
 SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **40 simulations per SLURM task**, resulting in 73 total tasks.
-```bash
-# Bootstrap the virtual environment
-bash setup_aces.sh
 
-# Submit the SLURM job array
-PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project/SugarCluster \
-  sbatch -A 155415875505 submit.slurm
+This is also simplified via the Makefile:
+```bash
+make submit-slurm ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
 ```
 
-### 4. Pull Results & Metadata
+### 4. Fetch Job Metadata
 
-After execution completes, download the logs:
-```bash
-make pull_data
-```
+After execution completes, export the job history metadata from `sacct` directly on the ACES login node. This is required for the timing analysis.
 
-To fetch job array metadata from `sacct`:
+For the Job Array backend (e.g., job ID `1730737`):
 ```bash
-# Run on ACES login node (e.g. for Job Array id 1730737):
 sacct -j 1730737 > slurm_full.txt
+```
 
-# For TAMULauncher job id 1730944:
+For the TAMULauncher backend (e.g., job ID `1730944`):
+```bash
 sacct -j 1730944 > slurm_tamulauncher_full.txt
 ```
-Copy these text files back to the project root directory.
+
+*(Optional)* If you wish to download the simulation results to analyze them locally:
+```bash
+make pull-data PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
+```
 
 ### 5. Run Post-Processing Pipeline
 
-Run `make all` to run all parsing and statistics steps:
+Activate the virtual environment if it isn't already, and run the pipeline on the server:
+```bash
+source .venv/bin/activate
+make all
+```
+
+This runs:
 1. `parse_slurm.py` — Parses `sacct` text logs into `results/slurm_timing.csv`.
-2. `aggregate.py` — Merges all 1,520 JSON logs and per-run durations into `results/run_summary.csv`.
+2. `aggregate.py` — Merges all 2,888 JSON logs and per-run durations into `results/run_summary.csv`.
 3. `timing_analysis.py` — Analyzes throughput, parallelism, and cumulative completion data.
 4. `analyze.py` — Compiles stats by parameter and ethics framework.
-5. `plots.py` — Generates 8 diagnostic and presentation plots.
+5. `plots.py` — Generates 8 diagnostic and presentation plots in `plots/`.
 
 ## Head-to-Head Comparison Results
 

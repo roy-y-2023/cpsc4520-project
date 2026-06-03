@@ -1,7 +1,12 @@
 .PHONY: configs commands aggregate timing analyze plots all clean \
         submit-slurm submit-tamu
 
-UV = uv run python
+# Default to uv run python if uv is installed, otherwise fallback to python3
+ifeq (, $(shell command -v uv 2>/dev/null))
+  UV ?= python3
+else
+  UV ?= uv run python
+endif
 
 # ACCOUNT: SLURM account number, required for submit-slurm and submit-tamu
 # Example:
