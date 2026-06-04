@@ -11,17 +11,7 @@
 
 ---
 
-## Slide 2: Agenda (0:20–0:30)
-
-> Quick roadmap for our 8-minute presentation: overview and research questions, 
-> then our distributed middleware architecture, followed by a head-to-head 
-> comparison of our two execution approaches. After that, we will discuss 
-> our timing stats, scientific findings, engineering challenges, and wrap up 
-> with future work.
-
----
-
-## Slide 3: Overview & Research Questions (0:30–1:30)
+## Slide 2: Overview & Research Questions (0:20–1:10)
 
 > Sugarscape is an agent-based simulation where agents move around a grid
 > collecting resources called "sugar" and "spice." They can catch diseases,
@@ -45,7 +35,7 @@
 
 ---
 
-## Slide 4: Architecture (1:30–2:30)
+## Slide 3: Architecture (1:10–2:00)
 
 > This is our middleware pipeline, designed to be fully declarative. Everything 
 > is driven by a single TOML file called sweep.toml. There are no hard-coded 
@@ -60,30 +50,46 @@
 > From there, we submit the runs using two strategies: standard SLURM Job Array 
 > (submit.slurm) or TAMULauncher (submit_tamulauncher.slurm). Once the jobs 
 > finish, we pull the results, aggregate.py parses the JSON outputs and timing logs 
-> into run_summary.csv, and plots.py generates the 7 presentation figures.
+> into run_summary.csv, and plots.py generates the presentation figures.
 
 ---
 
-## Slide 5: Approach 1: SLURM Job Array (2:30–3:30)
+## Slide 4: Challenges: Too Many Ways to Run a Job (2:00–2:40)
+
+> When designing the middleware, one of our biggest challenges was selecting the right 
+> execution strategy. ACES offers at least five different ways to run jobs, and it wasn't 
+> obvious which one was optimal.
+
+> SLURM Job Arrays sounded straightforward but we quickly hit QOS array-size limits. 
+> TAMULauncher is ACES-specific and underdocumented, making it feel like a risky complexity. 
+> Other options like the Drona GUI engine lacked terminal control, while MPI/OpenMP had too 
+> much overhead for independent simulations, and CCTools Work Queue added external dependencies.
+
+> Ultimately, we decided to start with the option that seemed most familiar—standard SLURM Job Arrays—and see how far we could push standard batch scheduling.
+
+---
+
+## Slide 5: Approach 1: SLURM Job Array (2:40–3:30)
 
 > Here's our first submission strategy: a SLURM Job Array. This slide displays 
 > real data from SLURM's sacct command for job array 1741358.
 
-> The primary bottleneck here was the ACES Quality of Service limits: the maximum 
+> The immediate challenge we hit was the strict ACES Quality of Service limits: the maximum 
 > array size was too small to submit all 2,168 simulations as separate tasks, 
-> and there is a global concurrency cap of 40 running jobs.
+> and there is a global concurrency cap of 40 running jobs that prevented us from running multiple arrays in parallel.
 
-> To work around this, we implemented hybrid batching, bundling 28 simulations 
-> into each SLURM task, resulting in 78 active tasks total.
+> To work around this and fit within the limits, we had to implement hybrid batching: 
+> writing a Python runner script to sequentially run multiple simulation tasks within a 
+> single SLURM job. Specifically, we bundled 28 simulations into each task, 
+> resulting in 78 active tasks across an 80-task array.
 
-> With this hybrid batching, the sweep ran across 13 unique ACES nodes. The total 
-> wall time was 12 minutes and 5 seconds. The serial equivalent execution is 
-> 23,186 seconds (or 386.4 minutes), meaning we achieved a 32.0× speedup and 
-> an effective throughput of 10,761 simulations per wall-clock hour.
+> While this hybrid batching got the job done across 13 ACES nodes in 12 minutes 
+> and 5 seconds, it introduced significant scripting complexity, and the global concurrency cap 
+> of 40 running jobs limited our parallelism factor to 32×.
 
 ---
 
-## Slide 6: Approach 2: TAMULauncher (3:30–4:30)
+## Slide 6: Approach 2: TAMULauncher (3:30–4:20)
 
 > Our second submission strategy is TAMULauncher, a custom task launcher on ACES. 
 > Instead of bundling simulations into hybrid tasks, we generate a commands.txt 
@@ -99,19 +105,24 @@
 > equivalent is 22,480 seconds (or 374.7 minutes), representing a 152.6× speedup 
 > and an effective throughput of 52,983 simulations per wall-clock hour.
 
+> While we could request more CPUs per node (like 48 cores) to increase throughput, 
+> the queue wait time would shoot up to half a day or more due to resource constraints. 
+> So, we found that requesting 12 CPUs per node strikes the best balance between concurrency 
+> and rapid queue clearance.
+
 ---
 
-## Slide 7: SLURM vs TAMULauncher: Head-to-Head (4:30–5:15)
+## Slide 7: SLURM vs TAMULauncher: Head-to-Head (4:20–5:05)
 
 > Comparing the two backends head-to-head, TAMULauncher is the clear winner for 
 > raw execution speed: it completes the sweep in 2 minutes 27 seconds compared 
 > to SLURM's 12 minutes 5 seconds. This is a 4.9× improvement in wall time, 
 > increasing the throughput from 10K to 52K simulations per hour.
 
-> However, scheduling trade-offs are important. While requesting 128 cores with 
-> high density (16 tasks per node) in previous tests led to memory contention 
-> and killed tasks, our updated request of 240 CPUs across 20 nodes (increasing 
-> density to 12 tasks per node) resolved the issue and allowed near-instant queue clearance.
+> However, scheduling trade-offs are important. While requesting high density 
+> (such as 48 tasks per node) in other environments can cause queue waits or memory 
+> contention, our balanced request of 240 CPUs via 12 tasks per node resolved queue 
+> times and resource caps.
 
 > Additionally, portability is a key factor. SLURM job arrays are portable to 
 > almost any cluster, whereas TAMULauncher is specific to ACES. We recommend 
@@ -120,7 +131,7 @@
 
 ---
 
-## Slide 8: Results: Distributed Systems (5:15–5:45)
+## Slide 8: Results: Distributed Systems (5:05–5:35)
 
 > This plot shows the cumulative completion curves for both runs. 
 
@@ -135,7 +146,7 @@
 
 ---
 
-## Slide 9: Results: Timing Breakdown (5:45–6:15)
+## Slide 9: Results: Timing Breakdown (5:35–6:05)
 
 > Looking at per-simulation duration, we see a tightly unimodal distribution, 
 > shown in the histogram on the left and the boxplot on the right.
@@ -151,7 +162,7 @@
 
 ---
 
-## Slide 10: Results: Scientific Findings (6:15–6:45)
+## Slide 10: Results: Scientific Findings (6:05–6:35)
 
 > Here are the infection heatmaps for the penalty=0 subset, stratified across the 
 > 8 ethical frameworks. Each cell shows the peak sick percentage based on 
@@ -167,7 +178,7 @@
 
 ---
 
-## Slide 11: Results: Survival by Penalty (6:45–7:05)
+## Slide 11: Results: Survival by Penalty (6:35–6:55)
 
 > This slide displays the survival rate stacked by disease penalty level.
 
@@ -179,7 +190,7 @@
 
 ---
 
-## Slide 12: Results: Inequality (Gini Coefficient) (7:05–7:25)
+## Slide 12: Results: Inequality (Gini Coefficient) (6:55–7:15)
 
 > We also analyzed wealth inequality by looking at the change in the Gini coefficient.
 
@@ -193,29 +204,30 @@
 
 ---
 
-## Slide 13: Challenges: Engineering Lessons (7:25–7:55)
+## Slide 13: Challenges: Engineering Lessons (7:15–7:45)
 
-> We encountered several platform challenges during implementation.
+> During implementation, we encountered several distinct engineering hurdles.
 
-> First, ACES job array and concurrency limits forced us to use hybrid batching 
-> for SLURM (80 tasks × 28 sims), and we adjusted the concurrency density to 12 
-> tasks per node to ensure rapid queue clearance under TAMULauncher.
+> First, we faced a misleading log issue under TAMULauncher: the workers reported 
+> being killed, which looked like an out-of-memory or timeout error. After debugging, 
+> we realized it was just normal teardown behavior when the launcher terminated.
 
-> We also ran into Windows-to-Linux friction: path separators (`\`) and Windows 
-> CRLF line endings in commands.txt caused silent TAMULauncher worker failures, 
-> which we fixed by forcing Unix LF line endings in our generators.
+> Second, the SLURM submit directory variable resolved to a temporary staging folder 
+> on ACES rather than our project directory, which we resolved by forcing absolute paths.
 
-> Additionally, `$SLURM_SUBMIT_DIR` resolves to a temporary staging directory 
-> on ACES, so we switched to using an absolute `PROJECT_DIR` environment variable. 
-> We also learned to interpret TAMULauncher's log outputs, where normal 
-> teardown looked like process termination but was actually normal behavior.
+> Third, cross-platform path separators caused issues: `os.path.join` produced backslashes 
+> on Windows, which failed on ACES's Linux environment. We fixed this by enforcing 
+> forward-slash separators in our job manifest.
 
-> Finally, when the final data analysis proved slow, we used ThreadPoolExecutor 
-> to parallelize parsing the sugarscape JSON outputs, speeding up aggregation.
+> Fourth, CRLF line endings on Windows caused silent execution failures in the 
+> TAMULauncher commands file, which we fixed by enforcing LF line endings in our generators.
+
+> Finally, when parsing the 2,168 simulation output files became a bottleneck, we parallelized 
+> the parsing script using a ThreadPoolExecutor, drastically reducing aggregation time.
 
 ---
 
-## Slide 14: Future Work (7:55–8:25)
+## Slide 14: Future Work (7:45–8:15)
 
 > We propose five key areas for future research.
 
@@ -236,7 +248,7 @@
 
 ---
 
-## Slide 15: Thank You / Questions (8:25–8:40)
+## Slide 15: Thank You / Questions (8:15–8:30)
 
 > In summary, SugarCluster is a TOML-driven middleware pipeline that ran 2,168 
 > simulations across two different cluster execution engines. SLURM completed 

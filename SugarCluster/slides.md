@@ -4,18 +4,6 @@
 
 ---
 
-## Agenda
-
-| Section | Time |
-| :--- | :--- |
-| Overview & Research Questions | 1 min |
-| Architecture | 2 min |
-| Results | 2 min |
-| Challenges & Lessons Learned | 2 min |
-| Future Work | 1 min |
-
----
-
 ## Overview
 
 **SugarCluster** — Middleware to run parameter sweeps on the Sugarscape agent-based
@@ -47,6 +35,22 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 ---
 
+## Challenges: Too Many Ways to Run a Job
+
+**The problem:** ACES offers 5+ execution strategies. No obvious "right" answer upfront.
+
+| Option | Why it's confusing |
+| :--- | :--- |
+| **SLURM Job Arrays** | Sounds straightforward — until you hit the QOS array-size limit mid-sweep |
+| **TAMULauncher** | ACES-specific, underdocumented — unclear if it's the right tool or just more complexity |
+| **Drona Workflow Engine** | GUI-based DAG scheduler — but we wanted terminal/scripting control, not point-and-click |
+| **MPI / OpenMP** | Familiar from class — but heavy overhead for embarrassingly parallel, independent sims |
+| **CCTools Work Queue** | Portable and general — but why bring in external tools when ACES has its own? |
+
+**Resolution:** We decided to start with the option that seemed most familiar—standard SLURM Job Arrays—and see how far we could push it.
+
+---
+
 ## Approach 1: SLURM Job Array
 
 ```
@@ -64,16 +68,17 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 | Metric | Value |
 | :--- | :--- |
 | **Total simulations** | 2,168 |
-| **SLURM tasks** | 80 (hybrid: 28 sims/task, 78 active) |
-| **Nodes used** | 13 ACES nodes |
+| **SLURM tasks** | 80 |
+| **Nodes used** | 13 physical nodes |
 | **Total wall time** | **12 min 5 sec** (submit → last task) |
 | **Serial equivalent** | 23,186 seconds (386.4 min) |
 | **Parallelism factor** | **32.0×** |
 | **Avg sim duration** | **10.7s** |
 | **Throughput** | **10,761 sims/wall-hour** |
 
-**Bottleneck:** ACES QOS limits — max array size forced hybrid batching (28 sims/task).
-Global concurrency cap of 40 running jobs limits true parallelism.
+**Challanges:**  ACES QOS limits — can only submit 80 jobs at once.
+**Workaround:**  Hybrid batching: a Python script that sequentially runs multiple simulation tasks (e.g. 30) within a single SLURM job.
+**Bottleneck:**  Global concurrency cap of 40 running jobs limits true parallelism.
 
 ---
 
@@ -101,6 +106,10 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 | **Throughput** | **52,983 sims/wall-hour** |
 
 **No job array limit** — TAMULauncher dispatches all 2,168 as individual tasks automatically.
+
+**Challanges:** While I can request more CPU for each node (e.g. 48 cores) to further increase the throughput, the queue wait time will significantly increase to half a day or more due to resource constraints that mean will spend more than queueing than actual execution.
+
+**Measurements:**  Requesting 12 CPUs per node for balance between concurrency and queue time.  
 
 ---
 
@@ -184,11 +193,8 @@ transparently — requesting 240 CPUs via 12 tasks per node resolved queue times
 
 | Problem | Fix |
 | :--- | :--- |
-| **QOS job limit** (2,168 jobs > max array size) | Hybrid batching: 80 tasks × 28 sims (78 active) → then switched to TAMULauncher |
-| **ACES global concurrency cap** (80 jobs) | TAMULauncher bypasses this entirely |
-| **TAMULauncher queue wait** | Adjusted concurrency density to 12 tasks per node for rapid queue clearance |
 | **Misleading Log**| It says process got killed, so I proceed to debug OOM, turns out it's normal TAMULauncher teardown behavior |
-| **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths: `PROJECT_DIR` env var |
+| **`$SLURM_SUBMIT_DIR`** resolves to tmpdir | Used absolute paths |
 | **Windows/Linux paths** (`os.path.join` → `\`) | Forced forward-slash paths in `jobs.csv` |
 | **CRLF line endings** | `commands.txt` written with explicit LF newlines |
 | **Final Analysis is Slow**| Use `ThreadPoolExecutor` to parallelize parsing sugarscape outputs |
