@@ -43,21 +43,7 @@ plots:
 all: configs aggregate timing analyze plots
 	@echo "=== Pipeline complete ==="
 	@echo "Results: results/"
-	@echo "Plots:   plots/"
-
-# ---------------------------------------------------------------------------
-# Cluster submission targets
-#
-# Both targets record the submission wall-clock time to submit_time_<tag>.txt
-# immediately before calling sbatch, so analysis scripts can use that file
-# instead of querying sacct for the initial submission timestamp.
-#
-# Required parameter:
-#   ACCOUNT — SLURM account number passed to sbatch -A
-# Optional environment variables forwarded to the job:
-#   PROJECT_DIR, SIMS_PER_JOB (submit-slurm)
-#   PROJECT_DIR, COMMANDS_PER_NODE (submit-tamu)
-# ---------------------------------------------------------------------------
+	@echo "Plots: plots/"
 
 setup-server:
 	bash setup_aces.sh
