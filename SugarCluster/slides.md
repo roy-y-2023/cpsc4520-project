@@ -112,7 +112,7 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 | **Throughput** | 10,761 sims/hr | **52,983 sims/hr** |
 | **Parallelism** | 32.0× | **152.6×** |
 | **Job limit workaround** | Hybrid batching (complex) | None needed |
-| **Overhead** | Batch startup per task | ~0% |
+| **Overhead** | Batch startup per task | ~30 seconds |
 | **Queue wait** | Near-instant (small jobs) | Near-instant (high priority / reduced density) |
 | **Portability** | Any SLURM cluster | ACES-specific |
 | **Observability** | `sacct` per task | Per-sim timing JSON |
