@@ -3,12 +3,11 @@
 # Run this on the login node: bash setup_aces.sh
 set -euo pipefail
 
-# Paths — adjust if needed
 PROJECT_DIR="/scratch/group/p.cis260910.000/cpsc4520-project"
 SUGARSCAPE_DIR="${PROJECT_DIR}/sugarscape"
 CLUSTER_DIR="${PROJECT_DIR}/SugarCluster"
 
-echo "=== Setting up SugarCluster on ACES ==="
+echo "Setting up SugarCluster on ACES"
 
 # 1. Create project directory structure
 mkdir -p "${PROJECT_DIR}"
@@ -39,19 +38,19 @@ fi
 
 echo "Using: $($PYTHON --version)"
 
-# 3. Create virtual environment
+# Create virtual environment
 cd "${CLUSTER_DIR}"
 if [ ! -d ".venv" ]; then
     $PYTHON -m venv .venv
     echo "Virtual environment created."
 fi
 
-# 4. Install dependencies
+# Install dependencies
 source .venv/bin/activate
 pip install --upgrade pip
 pip install tomli pandas matplotlib seaborn
 
-# 5. Quick smoke test
+# Quick smoke test
 echo "=== Smoke test: running 5-timestep baseline ==="
 cd "${PROJECT_DIR}"
 cat > /tmp/test_baseline.json << 'TESTJSON'
@@ -72,6 +71,6 @@ else
     echo "Smoke test produced no log file — check for errors above"
 fi
 
-echo "=== Setup complete ==="
+echo "Setup complete"
 echo "Projects directory: ${PROJECT_DIR}"
 echo "To run: cd ${CLUSTER_DIR} && sbatch submit.slurm"
