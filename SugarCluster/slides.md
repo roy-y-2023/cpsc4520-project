@@ -218,7 +218,7 @@ sweep.toml          →    generate_configs.py    →    2,168 configs
 1. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
 2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 52K sims/hr this is now tractable
 3. **Interactive dashboard** — real-time monitoring while jobs run on ACES
-4. **Containerized deployment** — Singularity/Docker for zero-install cluster portability
+4. **Concurrency Tuning** — Having powerful enough machine while not spending more time on queueing than actual execution.
 
 ---
 
