@@ -106,7 +106,7 @@ Global concurrency cap of 40 running jobs limits true parallelism.
 
 ## SLURM vs TAMULauncher: Head-to-Head
 
-| | SLURM Job Array | TAMULauncher |
+| Area | SLURM Job Array | TAMULauncher |
 | :--- | :--- | :--- |
 | **Wall time** | 12 min 5 sec | **2 min 27 sec** |
 | **Throughput** | 10,761 sims/hr | **52,983 sims/hr** |
