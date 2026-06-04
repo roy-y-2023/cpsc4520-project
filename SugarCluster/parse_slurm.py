@@ -78,12 +78,12 @@ def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT, index=False)
     print(f"Wrote {len(df)} SLURM tasks to {OUTPUT}")
-    print(f"  Tasks: {df.task_id.min()} - {df.task_id.max()}")
-    print(f"  Elapsed range: {df.elapsed_seconds.min():.0f}s - {df.elapsed_seconds.max():.0f}s")
-    print(f"  Nodes used: {df.node.nunique()}")
-    print(f"  First start: {df.start_time.min()}")
-    print(f"  Last end:    {df.end_time.max()}")
-    print(f"  Total wall:  {df.elapsed_seconds.sum():.0f} core-seconds")
+    print(f"Tasks: {df.task_id.min()} - {df.task_id.max()}")
+    print(f"Elapsed range: {df.elapsed_seconds.min():.0f}s - {df.elapsed_seconds.max():.0f}s")
+    print(f"Nodes used: {df.node.nunique()}")
+    print(f"First start: {df.start_time.min()}")
+    print(f"Last end: {df.end_time.max()}")
+    print(f"Total wall:n{df.elapsed_seconds.sum():.0f} core-seconds")
 
 
 if __name__ == "__main__":
