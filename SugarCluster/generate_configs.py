@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate Sugarscape simulation configs from a TOML sweep specification.
+"""
+Generate Sugarscape simulation configs from a TOML sweep specification.
 
 Usage:
     python generate_configs.py --sweep sweep.toml --outdir configs/ --manifest jobs.csv
@@ -14,7 +15,7 @@ import sys
 try:
     import tomllib
 except ModuleNotFoundError:
-    import tomli as tomllib  # type: ignore[no-redef]  # Python < 3.11
+    import tomli as tomllib  # type: ignore[no-redef]
 from itertools import product
 
 

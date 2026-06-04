@@ -1,5 +1,5 @@
 """
-Timing analysis — reads per-sim JSON timing files for both backends.
+Timing analysis: reads per-sim JSON timing files for both backends.
 """
 
 import json
@@ -67,7 +67,7 @@ def compute_cumulative_real(
             t_zero = df["start_time"].min()
         else:
             t_zero = df["end_time"].min()
-        print("  WARNING: submit_time_*.txt not found — using first sim start_time as t=0.")
+        print("WARNING: submit_time_*.txt not found, using first sim start_time as t=0.")
 
     df["t_seconds"] = (df["end_time"] - t_zero).dt.total_seconds()
     df["cum_sims"] = range(1, len(df) + 1)
@@ -156,14 +156,14 @@ def main():
     for backend in ("slurm", "tamu"):
         sim_df = load_sim_timing(backend)
         if sim_df is None:
-            print(f"[timing_analysis] {backend}: no timing_sim_*_{backend}.json found — skipping")
+            print(f"[timing_analysis] {backend}: no timing_sim_*_{backend}.json found, skipping")
             continue
 
         submit_time = load_submit_time(backend)
         if submit_time:
             print(f"[timing_analysis] {backend}: submit_time = {submit_time.isoformat()}")
         else:
-            print(f"[timing_analysis] {backend}: submit_time_{backend}.txt not found — using first sim start_time")
+            print(f"[timing_analysis] {backend}: submit_time_{backend}.txt not found, using first sim start_time")
 
         summary, real_cum, theo_cum = analyze(sim_df, submit_time, backend)
 
@@ -202,7 +202,7 @@ def _print_summary(summary: dict) -> None:
     if summary.get("ok_count") is not None:
         print(f"OK / Failed: {summary['ok_count']} / {summary['fail_count']}")
     print(f"Total wall time: {tw:.0f}s ({tw/60:.1f} min)"
-          + (" [incl. queue wait]" if summary.get("wall_includes_queue_wait") else ""))
+          + ("[incl. queue wait]" if summary.get("wall_includes_queue_wait") else ""))
     print(f"Total sim-seconds: {ts:.0f}s ({ts/60:.1f} min)")
     if summary.get("sims_per_wall_hour"):
         print(f"Throughput: {summary['sims_per_wall_hour']:.0f} sims/wall-hour")

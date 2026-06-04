@@ -45,7 +45,7 @@ def check_log(log_path: str, expected_timesteps: int) -> tuple[bool, str]:
     if last_ts >= expected_timesteps - 1:
         return True, f"OK ({len(data)} entries, last ts={last_ts})"
 
-    # Did not reach target — check for extinction
+    # Did not reach target, check for extinction
     extinction_ts = find_extinction_ts(data)
     if extinction_ts is not None:
         pop_last = data[-1].get("population", 0)
@@ -135,7 +135,7 @@ def main():
             writer = csv.writer(f)
             writer.writerow(["job_id", "config_path", "reason"])
             for job_id, path, reason in failed:
-                print(f"  [{job_id}] {path}: {reason}")
+                print(f"[{job_id}] {path}: {reason}")
                 writer.writerow([job_id, path, reason])
         print(f"\nRetry list written to '{args.retry}'")
     else:

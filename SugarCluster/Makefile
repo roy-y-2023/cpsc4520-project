@@ -1,5 +1,4 @@
-.PHONY: configs commands aggregate timing analyze plots all clean \
-        submit-slurm submit-tamu
+.PHONY: configs commands aggregate timing analyze plots all clean submit-slurm submit-tamu
 
 # Default to uv run python if uv is installed, otherwise fallback to python3
 ifeq (, $(shell command -v uv 2>/dev/null))
@@ -12,17 +11,13 @@ endif
 # PROJECT_DIR: the absolute path of where you cloned/extracted the repo
 # Example:
 #   make submit-slurm ACCOUNT=155415875505 PROJECT_DIR=/scratch/.../cpsc4520-project
-#   make submit-tamu  ACCOUNT=155415875505 PROJECT_DIR=/scratch/.../cpsc4520-project
+#   make submit-tamu ACCOUNT=155415875505 PROJECT_DIR=/scratch/.../cpsc4520-project
 ACCOUNT ?= 155415875505
 PROJECT_DIR ?= /scratch/group/p.cis260910.000/cpsc4520-project
 
 configs:
 	python3 generate_configs.py
 
-# Generate TAMULauncher commands file (one line per simulation).
-# Set PROJECT_DIR to the absolute path on the cluster before calling this.
-# Example:
-#   PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project make commands
 commands: configs
 	python3 generate_commands.py --project-dir "$(PROJECT_DIR)"
 
@@ -42,7 +37,7 @@ plots:
 	$(UV) plots.py
 
 all: configs aggregate timing analyze plots
-	@echo "=== Pipeline complete ==="
+	@echo "Pipeline complete"
 	@echo "Results: results/"
 	@echo "Plots: plots/"
 
