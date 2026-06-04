@@ -199,7 +199,7 @@ transparently — requesting 240 CPUs via 12 tasks per node resolved queue times
 1. **More parameters** — environmental knobs (resource peaks, seasons), trading
 2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 52K sims/hr this is now tractable
 3. **Interactive dashboard** — real-time monitoring while jobs run on ACES
-4. **Concurrency Tuning** — Having powerful enough machine while not spending more time on queueing than actual execution.
+4. **Automatic Concurrency Tuning** — Autotuning task density dynamically to optimize queue wait vs. execution throughput.
 5. **Portability** — abstraction layers to run on other supercomputer/cluster with minimal code changes.
 
 ---

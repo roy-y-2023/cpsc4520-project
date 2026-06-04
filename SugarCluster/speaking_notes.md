@@ -71,7 +71,7 @@
 
 > The primary bottleneck here was the ACES Quality of Service limits: the maximum 
 > array size was too small to submit all 2,168 simulations as separate tasks, 
-> and there is a global concurrency cap of 50 running jobs.
+> and there is a global concurrency cap of 40 running jobs.
 
 > To work around this, we implemented hybrid batching, bundling 28 simulations 
 > into each SLURM task, resulting in 78 active tasks total.
@@ -197,7 +197,8 @@
 > We encountered several platform challenges during implementation.
 
 > First, ACES job array and concurrency limits forced us to use hybrid batching 
-> for SLURM (80 tasks × 28 sims), which we bypassed using TAMULauncher.
+> for SLURM (80 tasks × 28 sims), and we adjusted the concurrency density to 12 
+> tasks per node to ensure rapid queue clearance under TAMULauncher.
 
 > We also ran into Windows-to-Linux friction: path separators (`\`) and Windows 
 > CRLF line endings in commands.txt caused silent TAMULauncher worker failures, 
@@ -205,45 +206,36 @@
 
 > Additionally, `$SLURM_SUBMIT_DIR` resolves to a temporary staging directory 
 > on ACES, so we switched to using an absolute `PROJECT_DIR` environment variable. 
-> Finally, we learned to interpret TAMULauncher's log outputs, where normal 
+> We also learned to interpret TAMULauncher's log outputs, where normal 
 > teardown looked like process termination but was actually normal behavior.
 
----
-
-## Slide 14: Challenges: Middleware Design (7:55–8:15)
-
-> A key design goal was to keep our middleware reusable and decoupled from this 
-> specific experiment.
-
-> We succeeded by separating declarative configuration in sweep.toml from the 
-> Python generator and execution backends.
-
-> Adding a new parameter knob requires only a single line in the TOML file and 
-> one line in the config template. Swapping the execution engine is as simple as 
-> switching from submit.slurm to submit_tamulauncher.slurm without changing 
-> any simulation or middleware code.
+> Finally, when the final data analysis proved slow, we used ThreadPoolExecutor 
+> to parallelize parsing the sugarscape JSON outputs, speeding up aggregation.
 
 ---
 
-## Slide 15: Future Work (8:15–8:45)
+## Slide 14: Future Work (7:55–8:25)
 
-> We propose four areas for future research.
+> We propose five key areas for future research.
 
-> First, expanding the parameter sweep to cover environmental variables such as 
-> resource peak locations and pollution rates, or agent genetics.
+> First, expanding the parameters to cover environmental variables such as 
+> resource peak locations, seasons, and agent trading behavior.
 
 > Second, running multiple seeds per configuration. Since we demonstrated a 
 > throughput of 52K simulations per hour, running 30 seeds per config (over 65K runs) 
 > is now fully tractable in under two hours.
 
-> Third, building a live dashboard to monitor ACES jobs in real time.
+> Third, building a live, interactive dashboard to monitor ACES jobs in real time.
 
-> Fourth, containerizing the setup using Singularity/Docker for zero-install 
-> cluster portability.
+> Fourth, implementing automatic concurrency tuning to dynamically adjust task 
+> density and optimize queue wait versus execution throughput.
+
+> Fifth, establishing abstraction layers to run on other supercomputers or 
+> clusters with minimal code changes.
 
 ---
 
-## Slide 16: Thank You / Questions (8:45–9:00)
+## Slide 15: Thank You / Questions (8:25–8:40)
 
 > In summary, SugarCluster is a TOML-driven middleware pipeline that ran 2,168 
 > simulations across two different cluster execution engines. SLURM completed 
