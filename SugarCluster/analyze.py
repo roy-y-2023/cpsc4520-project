@@ -54,7 +54,6 @@ def main() -> None:
     df["survived"] = df["survived"].astype(bool)
     disease = df[df["run_type"] == "disease"].copy()
 
-    # --- 1. summary_stats: group by all knobs + framework ---
     group_cols = ["framework", "transmission", "tagLength", "immunity", "penalty"]
     agg = {
         "survived": "mean",
@@ -74,7 +73,6 @@ def main() -> None:
     stats.to_csv(OUT_STATS, index=False)
     print(f"Wrote {len(stats)} rows to {OUT_STATS.name}")
 
-    # --- 2. framework_comparison: all penalties ---
     fw = compute_framework_agg(disease)
     baseline = df[df["run_type"] == "baseline"].copy()
     bl_agg = baseline.groupby("framework").agg(
@@ -87,28 +85,25 @@ def main() -> None:
     fw.to_csv(OUT_FRAMEWORK, index=False)
     print(f"Wrote {len(fw)} rows to {OUT_FRAMEWORK.name}")
 
-    # --- 3. framework_penalty0: penalty=0 subset ---
     p0 = disease[disease["penalty"] == 0].copy()
     fw0 = compute_framework_agg(p0)
     fw0 = fw0.merge(bl_agg, on="framework", how="left")
     fw0.to_csv(OUT_PENALTY0, index=False)
     print(f"Wrote {len(fw0)} rows to {OUT_PENALTY0.name} (penalty=0 only)")
 
-    # --- 4. survival_by_penalty ---
     survival = disease.groupby(["framework", "penalty"])["survived"].mean().reset_index()
     survival.rename(columns={"survived": "survival_rate"}, inplace=True)
     survival["penalty"] = survival["penalty"].astype(float)
     survival.to_csv(OUT_SURVIVAL, index=False)
     print(f"Wrote {len(survival)} rows to {OUT_SURVIVAL.name}")
 
-    # Quick stats
     print("\nKey findings:")
-    print(f"  Overall survival:   {disease['survived'].mean():.1%}")
+    print(f"Overall survival: {disease['survived'].mean():.1%}")
     for p_val in sorted(disease["penalty"].unique()):
         p_sub = disease[disease["penalty"] == p_val]
-        print(f"  Penalty={p_val} survival: {p_sub['survived'].mean():.1%}")
-    print(f"  Penalty=0 avg final_gini: {p0['final_gini'].mean():.3f}")
-    print(f"  Penalty=0 avg delta_gini: {p0['delta_final_gini'].mean():.3f}")
+        print(f"Penalty={p_val} survival: {p_sub['survived'].mean():.1%}")
+    print(f"Penalty=0 avg final_gini: {p0['final_gini'].mean():.3f}")
+    print(f"Penalty=0 avg delta_gini: {p0['delta_final_gini'].mean():.3f}")
 
 
 if __name__ == "__main__":
