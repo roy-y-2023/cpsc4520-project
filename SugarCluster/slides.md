@@ -43,7 +43,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 2. **`generate_configs.py`** → emits 2,168 minimal JSON configs + `jobs.csv` manifest
 3. **Two submission strategies** — compared head-to-head (see next slides)
 4. **`aggregate.py`** → parses 2,168 JSON results + timing → `run_summary.csv`
-5. **`plots.py`** → 8 figures for presentation
+5. **`plots.py`** → 7 figures for presentation
 
 ---
 
@@ -137,10 +137,12 @@ transparently — requesting 240 CPUs via 12 tasks per node resolved queue times
 
 | Penalty | Mean Duration | Outcome |
 | :--- | :--- | :--- |
+| Baseline (-1.0) | ~10.2s | 100% survival to t=1000 |
 | 0.0 | ~10.5s | 100% survival to t=1000 |
 | 0.1 – 2.0 | ~10.4s | 100% survival to t=1000 |
 
 - **Unimodal distribution** — simulation durations are tightly concentrated around 10.4s
+- **Baseline runs (-1.0)** — runs without any disease initialized finish slightly faster (~10.2s)
 - **Starting with 0 diseases prevents early mass extinction**, enabling 100% survival across all configurations
 - Execution time is uniform because all simulations survive and run to the 1,000 timestep limit
 
@@ -151,8 +153,8 @@ transparently — requesting 240 CPUs via 12 tasks per node resolved queue times
 ![heatmap](plots/heatmap_penalty0.png)
 *Peak infection % by transmission × immunity (penalty=0 only)*
 
-- **Transmission=1.0 + immunity=10** → 100% infection peak across all frameworks
-- **Transmission=0.05 + immunity=60** → lowest infection spread in the sweep
+- **Transmission=1.0 + immunity=10** → 68% infection peak across all frameworks
+- **Transmission=0.05 + immunity=60** → lowest infection spread (2% peak) in the sweep
 - **All 8 ethical frameworks show identical heatmaps** — disease physics dominates ethics
 
 ---

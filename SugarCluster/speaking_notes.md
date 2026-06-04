@@ -60,7 +60,7 @@
 > From there, we submit the runs using two strategies: standard SLURM Job Array 
 > (submit.slurm) or TAMULauncher (submit_tamulauncher.slurm). Once the jobs 
 > finish, we pull the results, aggregate.py parses the JSON outputs and timing logs 
-> into run_summary.csv, and plots.py generates the 8 presentation figures.
+> into run_summary.csv, and plots.py generates the 7 presentation figures.
 
 ---
 
@@ -130,9 +130,8 @@
 > The green line shows TAMULauncher, which has a much smoother and steeper curve 
 > because tasks complete individually. It finishes much earlier, at 2 minutes 27 seconds.
 
-> The dashed red line represents the theoretical perfect parallelism baseline, 
-> and the gap between the curves and the baseline highlights scheduler dispatch 
-> overhead on ACES.
+> The gap between the curves highlights the difference in scheduling dispatch 
+> overhead between standard SLURM arrays and TAMULauncher on ACES.
 
 ---
 
@@ -141,7 +140,9 @@
 > Looking at per-simulation duration, we see a tightly unimodal distribution, 
 > shown in the histogram on the left and the boxplot on the right.
 
-> Simulations run to completion at around 10.4 seconds across all configurations.
+> Simulations run to completion at around 10.4 seconds across all configurations. 
+> The baseline runs without disease, labeled as penalty -1.0 on the plot, finish slightly 
+> faster at around 10.2 seconds.
 
 > Unlike previous runs, the bimodal duration distribution is gone. Because agents 
 > start with zero diseases and contract them from the environment, the initial 
@@ -156,9 +157,9 @@
 > 8 ethical frameworks. Each cell shows the peak sick percentage based on 
 > transmission chance and immunity length.
 
-> Transmission of 1.0 combined with an immunity length of 10 leads to 100% 
-> infection peaks. A transmission chance of 0.05 and immunity length of 60 
-> minimizes the spread.
+> Transmission of 1.0 combined with an immunity length of 10 leads to a 68% 
+> infection peak. A transmission chance of 0.05 and immunity length of 60 
+> minimizes the spread to just 2%.
 
 > Crucially, all 8 ethical frameworks look nearly identical. Because we initialize 
 > the runs with 5 starting diseases and 0 diseases per agent, the dynamic load is 
