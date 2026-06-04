@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Validate that all jobs completed successfully.
+"""
+Validate that all jobs completed successfully.
 
 Reads the jobs manifest and checks each expected logfile:
 - Exists and is valid JSON
@@ -123,7 +124,6 @@ def main():
     ok_count = len(ok)
     extinction_count = sum(1 for r in results if r["status"].startswith("EXTINCTION"))
     failed_count = sum(1 for r in results if r["status"].startswith("INCOMPLETE") or r["status"] in ("MISSING", "CORRUPT_JSON", "EMPTY_LOG", "CONFIG_MISSING", "NO_LOGFILE_IN_CONFIG"))
-    # OK includes both "OK" and "EXTINCTION"
     valid_ok = sum(1 for r in results if r["status"].startswith("OK"))
     valid_total = valid_ok + extinction_count
 
