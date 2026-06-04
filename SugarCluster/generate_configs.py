@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Sugarscape simulation configs from a TOML sweep specification.
-
-Usage:
-    python generate_configs.py --sweep sweep.toml --outdir configs/ --manifest jobs.csv
-    python generate_configs.py --sweep sweep.toml --models bentham egoist --limit 10
-"""
+"""Generate Sugarscape simulation configs from a TOML sweep specification."""
 
 import argparse
 import csv
@@ -24,7 +19,7 @@ def load_sweep(toml_path: str) -> dict:
 
 
 def make_baseline_config(sim: dict, framework: str, outdir: str) -> tuple[dict, str]:
-    """Return a minimal baseline config dict and its filename."""
+    """Return a baseline config dict and its filename."""
     cfg = {
         "agentDecisionModels": [framework],
         "timesteps": sim["timesteps"],

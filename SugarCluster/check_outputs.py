@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that all jobs completed successfully.
-
-Reads the jobs manifest and checks each expected logfile:
-- Exists and is valid JSON
-- Reached timestep 1000, OR population went extinct (valid termination)
-
-Usage:
-    python check_outputs.py --manifest jobs.csv [--logdir .]
-"""
+"""Validate that all jobs completed successfully."""
 
 import argparse
 import csv

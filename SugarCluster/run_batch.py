@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""Run a batch of Sugarscape simulations sequentially within one SLURM task.
-
-Each simulation is delegated to run_sim.py (which handles timing, memory
-measurement, and writing timing_sim_<job_id>_slurm.json).
-
-Usage:
-    python run_batch.py --project-dir /path/to/project --start-id 1 --end-id 10
-"""
+"""Run a batch of Sugarscape simulations sequentially within one SLURM task."""
 
 import argparse
 import csv

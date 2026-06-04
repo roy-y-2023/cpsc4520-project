@@ -7,7 +7,7 @@
 ## Overview
 
 **SugarCluster** — Middleware to run parameter sweeps on the Sugarscape agent-based
-simulation engine at scale across an HPC cluster (Texas A&M ACES).
+simulation engine at scale across Texas A&M's ACES HPC cluster.
 
 ### Research Questions
 
@@ -29,7 +29,7 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 
 1. **`sweep.toml`** → TOML declares 4 parameter knobs (transmission: 5 values, tag length: 3, immunity: 3, penalty: 6) + 8 ethical frameworks
 2. **`generate_configs.py`** → emits 2,168 minimal JSON configs + `jobs.csv` manifest
-3. **Two submission strategies** — compared head-to-head (see next slides)
+3. **Two submission strategies** — compared directly (see next slides)
 4. **`aggregate.py`** → parses 2,168 JSON results + timing → `run_summary.csv`
 5. **`plots.py`** → 7 figures for presentation
 
@@ -126,8 +126,8 @@ simulation engine at scale across an HPC cluster (Texas A&M ACES).
 | **Portability** | Any SLURM cluster | ACES-specific |
 | **Observability** | `sacct` per task | Per-sim timing JSON |
 
-**Takeaway:** TAMULauncher is **4.9× faster** in wall time and handles the array size limit
-transparently — requesting 240 CPUs via 12 tasks per node resolved queue times and resource caps.
+**Takeaway:** TAMULauncher is **4.9× faster** in wall time. Requesting 240 CPUs via 12 tasks
+per node solved the queue time and resource cap issues.
 
 ---
 

@@ -1,13 +1,4 @@
-"""Aggregate per-simulation JSON logs and timing data into run_summary.csv.
-
-Reads every sim_*.json output from the data/ directory, extracts per-run
-metrics (survival, population, Gini, happiness, cause-of-death counts), merges
-per-sim timing from the timing/ directory, computes baseline deltas, and writes
-results/run_summary.csv.
-
-Usage:
-    python aggregate.py
-"""
+"""Aggregate per-simulation JSON logs and timing data into run_summary.csv."""
 
 import json
 import math
@@ -44,15 +35,7 @@ def _load_timing_jsons(pattern: str) -> "pd.DataFrame":
 
 
 def load_timing() -> "pd.DataFrame":
-    """Load per-sim timing from both backends and return a unified DataFrame.
-
-    File locations (pulled from cluster into local timing/ via pull_data):
-      - timing/timing_sim_<id>_slurm.json — SLURM array backend (run_batch.py → run_sim.py)
-      - timing/timing_sim_<id>_tamu.json  — TAMULauncher backend (run_sim.py direct)
-
-    When the same job_id appears in both slurm and tamu files, the tamu record
-    is kept (it contains richer wall-clock start/end timestamps).
-    """
+    """Load per-sim timing from both backends, preferring tamu over slurm."""
     chunks = []
 
     # SLURM-array per-sim JSONs
@@ -86,12 +69,7 @@ def load_timing() -> "pd.DataFrame":
 
 
 def summarize_json(path: Path) -> dict:
-    """Extract summary metrics from a single Sugarscape JSON log file.
-
-    Performs a single pass over all timestep records to compute population,
-    disease, wealth, and death statistics.  Returns an empty dict if the log
-    contains no records.
-    """
+    """Extract summary metrics from a single Sugarscape JSON log."""
     with open(path, encoding="utf-8") as f:
         records = json.load(f)
 
@@ -156,12 +134,7 @@ def summarize_json(path: Path) -> dict:
 
 
 def add_baseline_deltas(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach baseline reference values and compute delta columns.
-
-    For each disease run, appends the baseline final_population, final_gini,
-    final_happiness, and final_meanWealth from the matching framework's baseline
-    run, then computes delta_* columns (disease minus baseline).
-    """
+    """Attach baseline reference values and compute delta columns."""
     baselines = df[df["run_type"] == "baseline"].copy()
     baseline_cols = {
         "final_population": "baseline_final_population",
@@ -203,7 +176,7 @@ def _process_sim(args):
 
 
 def main() -> None:
-    """Entry point: load jobs + timing, aggregate all sim logs, write run_summary.csv."""
+    """Load jobs + timing, aggregate all sim logs, write run_summary.csv."""
     jobs = load_jobs()
     timing = load_timing()
 

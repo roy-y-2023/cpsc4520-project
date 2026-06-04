@@ -1,22 +1,4 @@
-"""Timing analysis — reads per-sim JSON timing files for both backends.
-
-Data sources (pulled locally via `make pull_data`):
-  timing/timing_sim_*_slurm.json  — SLURM array backend (run_batch.py → run_sim.py)
-  timing/timing_sim_*_tamu.json   — TAMULauncher backend (run_sim.py direct)
-  submit_time_slurm.txt           — sbatch submission timestamp (written by make submit-slurm)
-  submit_time_tamu.txt            — sbatch submission timestamp (written by make submit-tamu)
-
-Outputs written to results/:
-  timing_summary_slurm.csv          — per-backend summary stats
-  timing_summary_tamu.csv
-  cumulative_real_slurm.csv         — completion curve (t=0 at submission)
-  cumulative_real_tamu.csv
-  cumulative_theoretical_slurm.csv  — ideal infinite-parallelism curve
-  cumulative_theoretical_tamu.csv
-  timing_summary.csv                — backward-compat alias (tamu preferred, else slurm)
-  cumulative_real.csv               — backward-compat alias
-  cumulative_theoretical.csv        — backward-compat alias
-"""
+"""Compute timing and throughput metrics from per-sim JSON timing files."""
 
 import json
 import shutil
@@ -30,14 +12,10 @@ TIMING_DIR = PROJECT / "timing"
 OUT_DIR = PROJECT / "results"
 
 
-# ── Data loaders ──────────────────────────────────────────────────────────────
+# Data loaders
 
 def load_submit_time(backend: str) -> "datetime.datetime | None":
-    """Read the sbatch submission timestamp from submit_time_<backend>.txt.
-
-    Falls back to None if the file doesn't exist, in which case callers should
-    use min(start_time) across per-sim records instead.
-    """
+    """Read the sbatch submission timestamp from submit_time_<backend>.txt."""
     path = PROJECT / f"submit_time_{backend}.txt"
     if not path.exists():
         return None
@@ -68,17 +46,13 @@ def load_sim_timing(backend: str) -> "pd.DataFrame | None":
     return df
 
 
-# ── Curve builders ────────────────────────────────────────────────────────────
+# Curve builders
 
 def compute_cumulative_real(
     sim_df: pd.DataFrame,
     t_zero: "datetime.datetime | None",
 ) -> pd.DataFrame:
-    """Cumulative sims completed vs wall time.
-
-    t=0 is the sbatch submission time (from submit_time_*.txt).
-    If unavailable, t=0 falls back to min(start_time) across all sims.
-    """
+    """Cumulative sims completed vs wall time, with t=0 at submission."""
     df = sim_df.dropna(subset=["end_time"]).copy()
     df = df.sort_values("end_time").reset_index(drop=True)
 
@@ -106,19 +80,14 @@ def compute_cumulative_theoretical(sim_df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-# ── Analysis ──────────────────────────────────────────────────────────────────
+# Analysis
 
 def analyze(
     sim_df: pd.DataFrame,
     submit_time: "datetime.datetime | None",
     backend: str,
 ) -> "tuple[dict, pd.DataFrame, pd.DataFrame]":
-    """Compute summary stats and cumulative curves for one backend.
-
-    total_wall_seconds spans from sbatch submission to last sim completion,
-    capturing queue wait + actual execution. If submit_time is unavailable,
-    wall time is measured from first sim start to last sim end.
-    """
+    """Compute summary stats and cumulative curves for one backend."""
     has_timestamps = (
         "start_time" in sim_df.columns and sim_df["start_time"].notna().any()
         and "end_time" in sim_df.columns and sim_df["end_time"].notna().any()
@@ -168,7 +137,7 @@ def analyze(
     return summary, real_cum, theo_cum
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# Main
 
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)

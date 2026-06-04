@@ -1,14 +1,4 @@
-"""Compute grouped statistics and framework comparisons from run_summary.csv.
-
-Produces four CSVs in results/:
-  summary_stats.csv       — survival/disease metrics grouped by all sweep knobs
-  framework_comparison.csv — per-framework averages across all disease runs
-  framework_penalty0.csv  — same, restricted to penalty=0 runs
-  survival_by_penalty.csv — mean survival rate per (framework, penalty) pair
-
-Usage:
-    python analyze.py
-"""
+"""Compute grouped statistics and framework comparisons from run_summary.csv."""
 
 import sys
 from pathlib import Path
@@ -24,12 +14,7 @@ OUT_SURVIVAL = PROJECT / "results" / "survival_by_penalty.csv"
 
 
 def compute_framework_agg(disease_df: pd.DataFrame, label: str = "") -> pd.DataFrame:
-    """Aggregate per-run disease metrics by ethical framework.
-
-    Returns one row per framework with mean survival rate, peak infection,
-    final population, Gini coefficient, happiness, total deaths, baseline
-    deltas, and average simulation duration.
-    """
+    """Aggregate per-run disease metrics by ethical framework."""
     framework_agg = {
         "survived": "mean",
         "peak_sick_percentage": "mean",
@@ -49,7 +34,7 @@ def compute_framework_agg(disease_df: pd.DataFrame, label: str = "") -> pd.DataF
 
 
 def main() -> None:
-    """Entry point: read run_summary.csv and write the four analysis CSVs."""
+    """Read run_summary.csv and write the four analysis CSVs."""
     df = pd.read_csv(RUN_SUMMARY)
     df["survived"] = df["survived"].astype(bool)
     disease = df[df["run_type"] == "disease"].copy()

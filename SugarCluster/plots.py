@@ -1,18 +1,4 @@
-"""Generate all presentation figures from run_summary.csv and timing data.
-
-Outputs eight PNG files to plots/:
-  cumulative_completion.png  — SLURM vs TAMULauncher throughput curves
-  sim_duration_hist.png      — per-simulation duration histogram
-  node_distribution.png      — ACES node load distribution (if available)
-  timing_by_penalty.png      — simulation duration by disease penalty level
-  heatmap_penalty0.png       — peak infection heat-maps (penalty=0 only)
-  survival_stacked.png       — survival rate by penalty and framework
-  gini_penalty.png           — Gini change under pandemic (penalty=0.1)
-  memory_by_penalty.png      — peak memory usage by penalty level
-
-Usage:
-    python plots.py
-"""
+"""Generate presentation figures from run_summary.csv and timing data."""
 
 import json
 from pathlib import Path
@@ -45,11 +31,7 @@ def load() -> pd.DataFrame:
 
 
 def load_sim_timing() -> pd.DataFrame:
-    """Load per-sim timing from JSON files for both backends.
-
-    De-duplicates by job_id, preferring tamu records over slurm records because
-    the tamu backend captures richer wall-clock start/end timestamps.
-    """
+    """Load per-sim timing from JSON files for both backends, deduplicating by job_id."""
     chunks = []
     timing_dir = PROJECT / "timing"
     for pattern in ("timing_sim_*_slurm.json", "timing_sim_*_tamu.json"):
@@ -79,11 +61,7 @@ def load_sim_timing() -> pd.DataFrame:
 
 
 def load_cumulative():
-    """Load cumulative completion curves for all available modes.
-
-    Returns a dict with keys 'slurm', 'tamu', 'theoretical',
-    each being a DataFrame or None.
-    """
+    """Load cumulative completion curves for all available modes."""
     def _try(name):
         p = RESULTS / name
         return pd.read_csv(p) if p.exists() else None
@@ -95,7 +73,7 @@ def load_cumulative():
     }
 
 
-# ─── PLOT 1: Cumulative Completion (Real vs Theoretical) ────────────────────────
+# PLOT 1: Cumulative Completion (Real vs Theoretical)
 
 def plot_cumulative_completion():
     curves = load_cumulative()
@@ -134,7 +112,7 @@ def plot_cumulative_completion():
     print("  saved cumulative_completion.png")
 
 
-# ─── PLOT 2: Per-Sim Duration Histogram ──────────────────────────────────────
+# PLOT 2: Per-Sim Duration Histogram
 
 def plot_slurm_task_duration():
     sim_timing = load_sim_timing()
@@ -156,7 +134,7 @@ def plot_slurm_task_duration():
     print("  saved sim_duration_hist.png")
 
 
-# ─── PLOT 3: Node Distribution (legacy — skipped if no data) ─────────────────
+# PLOT 3: Node Distribution
 
 def plot_node_distribution():
     p = RESULTS / "node_distribution.csv"
@@ -183,7 +161,7 @@ def plot_node_distribution():
     print("  saved node_distribution.png")
 
 
-# ─── PLOT 4: Per-Sim Timing by Penalty ─────────────────────────────────
+# PLOT 4: Per-Sim Timing by Penalty
 
 def plot_timing_by_penalty():
     sim_timing = load_sim_timing()
@@ -210,7 +188,7 @@ def plot_timing_by_penalty():
     print("  saved timing_by_penalty.png")
 
 
-# ─── PLOT 5: Heatmap (Penalty=0 Only) ──────────────────────────
+# PLOT 5: Heatmap (Penalty=0 Only)
 
 def plot_heatmap_penalty0():
     df = load()
@@ -239,7 +217,7 @@ def plot_heatmap_penalty0():
     print("  saved heatmap_penalty0.png")
 
 
-# ─── PLOT 6: Survival Stacked by Penalty ───────────────────────
+# PLOT 6: Survival Stacked by Penalty
 
 def plot_survival_stacked():
     survival = pd.read_csv(RESULTS / "survival_by_penalty.csv")
@@ -266,7 +244,7 @@ def plot_survival_stacked():
     print("  saved survival_stacked.png")
 
 
-# ─── PLOT 7: Gini Delta for Penalty=0.1 ───────────────────────
+# PLOT 7: Gini Delta for Penalty=0.1
 
 def plot_gini_penalty():
     df = load()
@@ -290,7 +268,7 @@ def plot_gini_penalty():
     print("  saved gini_penalty.png")
 
 
-# ─── PLOT 8: Peak Memory Usage by Penalty ──────────────────────────────────
+# PLOT 8: Peak Memory Usage by Penalty
 
 def plot_memory_by_penalty():
     sim_timing = load_sim_timing()
@@ -316,10 +294,10 @@ def plot_memory_by_penalty():
     print("  saved memory_by_penalty.png")
 
 
-# ─── MAIN ───────────────────────────────────────────────────────
+# Main
 
 def main() -> None:
-    """Generate all plots and save them to the plots/ directory."""
+    """Generate all plots."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Generating timing + stratified plots...")
     plot_cumulative_completion()

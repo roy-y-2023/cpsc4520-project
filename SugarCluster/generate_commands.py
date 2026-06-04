@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a TAMULauncher commands file from jobs.csv.
-
-Each line in the output file calls run_sim.py with a single --job-id,
-which TAMULauncher will dispatch concurrently across available cores/nodes.
-
-Usage:
-    python generate_commands.py
-    python generate_commands.py --project-dir /scratch/... --outfile commands.txt
-    python generate_commands.py --job-ids 1 5 10  # generate for specific IDs only
-"""
+"""Generate a TAMULauncher commands file from jobs.csv."""
 
 import argparse
 import csv

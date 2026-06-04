@@ -1,6 +1,6 @@
 # SugarCluster
 
-Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on the Texas A&M ACES HPC cluster.
+Run Sugarscape agent-based simulation parameter sweeps at scale on the Texas A&M ACES HPC cluster.
 
 ## Overview
 
@@ -67,7 +67,7 @@ Navigate to the `SugarCluster` folder and bootstrap the environment:
 cd SugarCluster
 make setup-server
 ```
-*Note: This automatically creates a Python virtual environment and installs all dependencies (`tomli`, `pandas`, `matplotlib`, `seaborn`).*
+This creates a Python virtual environment and installs all dependencies.
 
 ### 2. Run the Parameter Sweep
 Activate the virtual environment, then choose one of the two execution backends to generate configurations/commands and submit the job in a single command:
@@ -99,7 +99,7 @@ sacct -j <JOB_ID> > slurm_full.txt               # For Job Array backend
 # Run the post-processing pipeline
 make all
 ```
-*Note: All results will be generated in `results/` and figures in `plots/` on the server. You can download the completed `plots/` folder to view the figures locally.*
+Results go to `results/` and figures to `plots/` on the server. Download the `plots/` folder to view locally.
 
 
 ## Project Structure
@@ -160,7 +160,7 @@ frameworks = [
 ]
 ```
 
-Note: if you're settings resulted in more sims and/or longer run, you need to adjust the time ceiling in `submit_tamulauncher.slurm` and `submit.slurm` accordingly.
+If your settings result in more sims or longer runs, adjust the time ceiling in `submit_tamulauncher.slurm` and `submit.slurm` accordingly.
 
 ### 2. Generate Configs & Commands
 
@@ -188,7 +188,7 @@ Using the Makefile target simplifies configuration generation, command generatio
 ```bash
 make submit-tamu ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project
 ```
-*Note: This requests 20 nodes with 12 tasks per node (240 slots) to process the sweep.*
+This requests 20 nodes with 12 tasks per node (240 slots) to process the sweep.
 
 #### Option B: SLURM Job Array Backend
 SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **28 simulations per SLURM task**, resulting in 80 total tasks (78 active).
@@ -257,7 +257,7 @@ All 2,168 simulations ran successfully on ACES using both backends:
    ```python
    cfg[config_level]["myNewParam"] = combo["myNewParam"]
    ```
-   *Note: For ranges, use `[combo["myNewParam"], combo["myNewParam"]]` to fit Sugarscape's expected format.*
+    *Note: For ranges, use `[combo["myNewParam"], combo["myNewParam"]]` to fit Sugarscape's expected format.*
 
 ## License
 

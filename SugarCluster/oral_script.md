@@ -10,7 +10,7 @@ This is for CPSC 4520, Distributed Systems. All the code lives in the SugarClust
 
 ## Agenda (0:20–0:30)
 
-Here's the roadmap for our eight minutes. I'll start with an overview and our research questions, then walk through our distributed middleware architecture. After that, we'll compare our two execution strategies head-to-head, look at the timing data, go over our scientific findings, talk about the engineering challenges we hit, and wrap up with future work.
+Here's the roadmap for our eight minutes. I'll start with an overview and our research questions, then go through our distributed middleware architecture. After that, we'll compare our two execution strategies side by side, look at the timing data, go over our scientific findings, talk about the engineering challenges we hit, and wrap up with future work.
 
 ---
 
@@ -30,7 +30,7 @@ To answer these, we swept five transmission chances, three tag lengths, three im
 
 ## Architecture (1:30–2:30)
 
-Here's our middleware pipeline. The whole thing is fully declarative — everything is driven by one TOML file called `sweep.toml`. No hard-coded parameter values anywhere in Python. If you want to add a new knob, you just add one line to the TOML and one line to the config template.
+Here's our middleware pipeline. Everything is driven by one TOML file called `sweep.toml`. No hard-coded parameter values anywhere in Python. If you want to add a new knob, you just add one line to the TOML and one line to the config template.
 
 `generate_configs.py` reads that TOML file, computes the Cartesian product, and spits out 2,168 minimal JSON configs plus a `jobs.csv` manifest. The config files only store the keys that differ from Sugarscape's defaults — so no configuration bloat.
 
@@ -140,7 +140,7 @@ Finally, when the data analysis started running slow, we used `ThreadPoolExecuto
 
 ## Future Work (7:55–8:25)
 
-We've got five key areas for future work.
+We've got five areas for future work.
 
 First, expanding the parameters to cover environmental variables — resource peak locations, seasons, agent trading behavior.
 
