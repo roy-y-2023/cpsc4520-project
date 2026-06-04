@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Run a batch of Sugarscape simulations sequentially within one SLURM task.
+"""
+Run a batch of Sugarscape simulations sequentially within one SLURM task.
 
 Each simulation is delegated to run_sim.py (which handles timing, memory
 measurement, and writing timing_sim_<job_id>_slurm.json).
-
-Usage:
-    python run_batch.py --project-dir /path/to/project --start-id 1 --end-id 10
 """
 
 import argparse
@@ -83,7 +81,6 @@ def main() -> int:
         else:
             print(f"{label} OK")
 
-    # Write retry list on errors
     if errors:
         print(f"\n*** Batch {start_id}–{end_id} completed with {len(errors)} error(s) ***")
         retry_path = os.path.join(cluster_dir, f"retry_{start_id}_{end_id}.csv")

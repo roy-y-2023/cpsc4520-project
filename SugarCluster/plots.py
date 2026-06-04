@@ -1,4 +1,6 @@
-"""Generate all plots and save them to the plots/ directory"""
+"""
+Generate all plots and save them to the plots/ directory
+"""
 
 import json
 from pathlib import Path
@@ -113,12 +115,12 @@ def plot_cumulative_completion():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "cumulative_completion.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved cumulative_completion.png")
+    print("saved cumulative_completion.png")
 
 def plot_slurm_task_duration():
     sim_timing = load_sim_timing()
     if sim_timing.empty:
-        print("  skipping sim_duration_hist.png (no per-sim timing data)")
+        print("skipping sim_duration_hist.png (no per-sim timing data)")
         return
     ok = sim_timing[sim_timing["status"] == "OK"] if "status" in sim_timing.columns else sim_timing
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -132,16 +134,16 @@ def plot_slurm_task_duration():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "sim_duration_hist.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved sim_duration_hist.png")
+    print("saved sim_duration_hist.png")
 
 def plot_node_distribution():
     p = RESULTS / "node_distribution.csv"
     if not p.exists():
-        print("  skipping node_distribution.png (no node_distribution.csv)")
+        print("skipping node_distribution.png (no node_distribution.csv)")
         return
     nd = pd.read_csv(p)
     if nd.empty:
-        print("  skipping node_distribution.png (empty node_distribution.csv)")
+        print("skipping node_distribution.png (empty node_distribution.csv)")
         return
     num_nodes = nd["num_nodes"].sum()
     fig, ax = plt.subplots(figsize=(7, 4))
@@ -156,12 +158,12 @@ def plot_node_distribution():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "node_distribution.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved node_distribution.png")
+    print("saved node_distribution.png")
 
 def plot_timing_by_penalty():
     sim_timing = load_sim_timing()
     if sim_timing.empty:
-        print("  skipping timing_by_penalty.png (no per-sim timing data)")
+        print("skipping timing_by_penalty.png (no per-sim timing data)")
         return
     merged = pd.read_csv(RESULTS / "run_summary.csv")
     sim_timing = sim_timing.merge(
@@ -180,7 +182,7 @@ def plot_timing_by_penalty():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "timing_by_penalty.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved timing_by_penalty.png")
+    print("saved timing_by_penalty.png")
 
 def plot_heatmap_penalty0():
     df = load()
@@ -206,7 +208,7 @@ def plot_heatmap_penalty0():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "heatmap_penalty0.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved heatmap_penalty0.png")
+    print("saved heatmap_penalty0.png")
 
 def plot_survival_stacked():
     survival = pd.read_csv(RESULTS / "survival_by_penalty.csv")
@@ -230,11 +232,10 @@ def plot_survival_stacked():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "survival_stacked.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved survival_stacked.png")
+    print("saved survival_stacked.png")
 
 def plot_gini_penalty():
     df = load()
-    # Filter by penalty == 0.1 and only include survived runs
     disease = df[
         (df["run_type"] == "disease") & (df["penalty"] == 0.1) & df["survived"]
     ].copy()
@@ -251,12 +252,12 @@ def plot_gini_penalty():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "gini_penalty.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("  saved gini_penalty.png")
+    print("saved gini_penalty.png")
 
 def plot_memory_by_penalty():
     sim_timing = load_sim_timing()
     if sim_timing.empty or "peak_memory_mb" not in sim_timing.columns:
-        print("  skipping memory plot (no peak_memory_mb data)")
+        print("skipping memory plot (no peak_memory_mb data)")
         return
 
     merged = pd.read_csv(RESULTS / "run_summary.csv")

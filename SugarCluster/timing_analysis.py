@@ -1,21 +1,5 @@
-"""Timing analysis — reads per-sim JSON timing files for both backends.
-
-Data sources (pulled locally via `make pull_data`):
-  timing/timing_sim_*_slurm.json  — SLURM array backend (run_batch.py → run_sim.py)
-  timing/timing_sim_*_tamu.json   — TAMULauncher backend (run_sim.py direct)
-  submit_time_slurm.txt           — sbatch submission timestamp (written by make submit-slurm)
-  submit_time_tamu.txt            — sbatch submission timestamp (written by make submit-tamu)
-
-Outputs written to results/:
-  timing_summary_slurm.csv          — per-backend summary stats
-  timing_summary_tamu.csv
-  cumulative_real_slurm.csv         — completion curve (t=0 at submission)
-  cumulative_real_tamu.csv
-  cumulative_theoretical_slurm.csv  — ideal infinite-parallelism curve
-  cumulative_theoretical_tamu.csv
-  timing_summary.csv                — backward-compat alias (tamu preferred, else slurm)
-  cumulative_real.csv               — backward-compat alias
-  cumulative_theoretical.csv        — backward-compat alias
+"""
+Timing analysis — reads per-sim JSON timing files for both backends.
 """
 
 import json
@@ -29,8 +13,6 @@ PROJECT = Path(__file__).resolve().parent
 TIMING_DIR = PROJECT / "timing"
 OUT_DIR = PROJECT / "results"
 
-
-# ── Data loaders ──────────────────────────────────────────────────────────────
 
 def load_submit_time(backend: str) -> "datetime.datetime | None":
     """Read the sbatch submission timestamp from submit_time_<backend>.txt.
@@ -68,8 +50,6 @@ def load_sim_timing(backend: str) -> "pd.DataFrame | None":
     return df
 
 
-# ── Curve builders ────────────────────────────────────────────────────────────
-
 def compute_cumulative_real(
     sim_df: pd.DataFrame,
     t_zero: "datetime.datetime | None",
@@ -105,8 +85,6 @@ def compute_cumulative_theoretical(sim_df: pd.DataFrame) -> pd.DataFrame:
         columns={"duration_seconds": "t_seconds"}
     )
 
-
-# ── Analysis ──────────────────────────────────────────────────────────────────
 
 def analyze(
     sim_df: pd.DataFrame,
@@ -168,8 +146,6 @@ def analyze(
     return summary, real_cum, theo_cum
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -221,21 +197,21 @@ def _print_summary(summary: dict) -> None:
     backend = summary["backend"].upper()
     tw = summary["total_wall_seconds"]
     ts = summary["total_sim_seconds"]
-    print(f"=== {backend} Timing Summary ===")
-    print(f"  Total sims:          {summary['total_sims']}")
+    print(f"{backend} Timing Summary")
+    print(f"Total sims: {summary['total_sims']}")
     if summary.get("ok_count") is not None:
-        print(f"  OK / Failed:         {summary['ok_count']} / {summary['fail_count']}")
-    print(f"  Total wall time:     {tw:.0f}s ({tw/60:.1f} min)"
+        print(f"OK / Failed: {summary['ok_count']} / {summary['fail_count']}")
+    print(f"Total wall time: {tw:.0f}s ({tw/60:.1f} min)"
           + (" [incl. queue wait]" if summary.get("wall_includes_queue_wait") else ""))
-    print(f"  Total sim-seconds:   {ts:.0f}s ({ts/60:.1f} min)")
+    print(f"Total sim-seconds: {ts:.0f}s ({ts/60:.1f} min)")
     if summary.get("sims_per_wall_hour"):
-        print(f"  Throughput:          {summary['sims_per_wall_hour']:.0f} sims/wall-hour")
-    print(f"  Avg sim duration:    {summary['avg_sim_duration']:.1f}s")
-    print(f"  Min/Max sim:         {summary['min_sim_duration']:.1f}s / {summary['max_sim_duration']:.1f}s")
+        print(f"Throughput: {summary['sims_per_wall_hour']:.0f} sims/wall-hour")
+    print(f"Avg sim duration: {summary['avg_sim_duration']:.1f}s")
+    print(f"Min/Max sim: {summary['min_sim_duration']:.1f}s / {summary['max_sim_duration']:.1f}s")
     if summary.get("parallelism_factor"):
-        print(f"  Parallelism factor:  {summary['parallelism_factor']:.1f}x")
+        print(f"Parallelism factor: {summary['parallelism_factor']:.1f}x")
     if summary.get("submit_time"):
-        print(f"  Submission time:     {summary['submit_time']}")
+        print(f"Submission time: {summary['submit_time']}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Per-simulation runner — used by both TAMULauncher and SLURM array (via run_batch.py).
+"""
+Per-simulation runner — used by both TAMULauncher and SLURM array (via run_batch.py).
 
 Each invocation runs one Sugarscape simulation, measures wall-clock time and
 peak RSS, and writes a timing JSON to:
@@ -51,8 +52,6 @@ def main() -> int:
     sugarscape_py = os.path.join(sugarscape_dir, "sugarscape.py")
     python_bin = sys.executable  # inherit the interpreter that launched run_sim.py
 
-    # Timing output path — written to cluster_dir root, tagged with backend.
-    # The local timing/ folder is only used when pulling data to the local machine.
     timing_path = os.path.join(
         cluster_dir, f"timing_sim_{args.job_id}_{args.backend}.json"
     )
@@ -64,7 +63,6 @@ def main() -> int:
         "diseaseSugarMetabolismPenalty",
     ]
 
-    # --- Load manifest row ---
     if not os.path.exists(manifest):
         msg = f"ERROR: Manifest not found: {manifest}"
         print(msg, file=sys.stderr)
@@ -105,10 +103,6 @@ def main() -> int:
 
     print(f"{label} running {config_rel}", flush=True)
 
-    # --- Run simulation ---
-    # Sugarscape writes its logfile (bare name) relative to cwd.
-    # cwd is not overridden here — output goes to whatever directory
-    # the caller ran this script from (typically SugarCluster/).
     sim_start = time.perf_counter()
     start_wall = datetime.datetime.now(datetime.timezone.utc)
     p = subprocess.Popen(
@@ -146,8 +140,8 @@ def main() -> int:
         print(
             f"{label} FAILED ({status}) in {duration:.1f}s "
             f"(Peak Mem: {peak_memory_mb:.2f}MB)\n"
-            f"  stdout: {stdout.strip()[:200]}\n"
-            f"  stderr: {stderr.strip()[:200]}",
+            f" stdout: {stdout.strip()[:200]}\n"
+            f" stderr: {stderr.strip()[:200]}",
             file=sys.stderr,
         )
     else:

@@ -1,11 +1,8 @@
-"""Parse sacct output from ACES into a structured slurm_timing.csv.
+"""
+Parse sacct output from ACES into a structured slurm_timing.csv.
 
-Reads slurm_full.txt (raw `sacct` output), extracts elapsed time, start/end
-times, and compute node for every completed sugarscape-sweep task, and writes
-results/slurm_timing.csv.
-
-Usage:
-    python parse_slurm.py
+Reads slurm_full.txt (raw `sacct` output), extracts elapsed time, start/end times, 
+and compute node for every completed sugarscape-sweep task, and writes results/slurm_timing.csv.
 """
 
 import sys
