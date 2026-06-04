@@ -173,7 +173,7 @@
 > minimizes the spread to just 2%.
 
 > Crucially, all 8 ethical frameworks look nearly identical. Because we initialize 
-> the runs with 5 starting diseases and 0 diseases per agent, the dynamic load is 
+> the runs with 5 agents with disease, the dynamic load is 
 > identical across frameworks, and disease physics dominates ethical decision-making.
 
 ---
