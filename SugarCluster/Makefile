@@ -9,6 +9,7 @@ else
 endif
 
 # ACCOUNT: SLURM account number, required for submit-slurm and submit-tamu
+# PROJECT_DIR: the absolute path of where you cloned/extracted the repo
 # Example:
 #   make submit-slurm ACCOUNT=155415875505 PROJECT_DIR=/scratch/.../cpsc4520-project
 #   make submit-tamu  ACCOUNT=155415875505 PROJECT_DIR=/scratch/.../cpsc4520-project
