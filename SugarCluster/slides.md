@@ -194,31 +194,13 @@ transparently — requesting 240 CPUs via 12 tasks per node resolved queue times
 
 ---
 
-## Challenges: Middleware Design
-
-**Goal:** Reusable, not hard-coded to this experiment.
-
-```
-sweep.toml          →    generate_configs.py    →    2,168 configs
-(declarative params)     (generic cartesian       (minimal JSON,
-                         product engine)           Sugarscape fills defaults)
-
-                    →    generate_commands.py   →    commands.txt
-                         (TAMULauncher mode)         (1 line per sim)
-```
-
-- **No hard-coded parameter values** in Python — everything lives in `sweep.toml`
-- **Adding a new knob** = 1 line in TOML + 1 line in config template
-- **Swap execution engine** = switch `submit.slurm` ↔ `submit_tamulauncher.slurm`
-
----
-
 ## Future Work
 
-1. **More parameters** — environmental knobs (resource peaks, pollution), agent genetics
+1. **More parameters** — environmental knobs (resource peaks, seasons), trading
 2. **Multiple seeds** — 30+ seeds per config for statistical significance; at 52K sims/hr this is now tractable
 3. **Interactive dashboard** — real-time monitoring while jobs run on ACES
 4. **Concurrency Tuning** — Having powerful enough machine while not spending more time on queueing than actual execution.
+5. **Portability** — abstraction layers to run on other supercomputer/cluster with minimal code changes.
 
 ---
 
@@ -229,7 +211,3 @@ sweep.toml          →    generate_configs.py    →    2,168 configs
 2,168 simulations. Two execution engines. SLURM: 12:05. TAMULauncher: 2:27.
 
 **Questions?**
-
----
-
-*Repository: github.com/roy-y-2023/cpsc4520-project · SLURM job: 1741358 · TAMULauncher job: 1741350*
