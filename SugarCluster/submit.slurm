@@ -14,17 +14,6 @@ if command -v module &> /dev/null; then
     module load GCCcore/13.3.0 Python/3.12.3
 fi
 
-
-# --- Configuration (override via environment variables) ---
-# PROJECT_DIR: root containing SugarCluster/ and sugarscape/
-# MAX_ARRAY_SLOTS: maximum SLURM job-array slots available (default 80)
-# SIMS_PER_JOB: override computed sims-per-job (auto-computed if unset)
-#
-# Usage:
-#   PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project \
-#       sbatch -A 155415875505 submit.slurm
-# ----------------------------------------------------------
-
 PROJECT_DIR="${PROJECT_DIR:-}"
 MAX_ARRAY_SLOTS="${MAX_ARRAY_SLOTS:-80}"
 

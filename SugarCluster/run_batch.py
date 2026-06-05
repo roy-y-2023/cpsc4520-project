@@ -64,15 +64,12 @@ def main() -> int:
         print(f"{label} dispatching to run_sim.py")
         sys.stdout.flush()
 
-        result = subprocess.run(
-            [
-                sys.executable, run_sim_py,
-                "--project-dir", args.project_dir,
-                "--job-id", str(job_id),
-                "--backend", "slurm",
-            ],
-            # Inherit cwd so sugarscape output JSONs land in SugarCluster/
-        )
+        result = subprocess.run([
+            sys.executable, run_sim_py,
+            "--project-dir", args.project_dir,
+            "--job-id", str(job_id),
+            "--backend", "slurm",
+        ],)
 
         if result.returncode != 0:
             status = f"EXIT_{result.returncode}"

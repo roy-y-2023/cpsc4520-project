@@ -4,7 +4,7 @@ Middleware to run Sugarscape agent-based simulation parameter sweeps at scale on
 
 ## Overview
 
-SugarCluster automates the entire distributed lifecycle, from configuration sweep generation to parallel execution, post-run verification, and data analysis. It supports a **dual-backend execution model**, allowing you to choose between standard SLURM job arrays and high-performance TAMULauncher execution.
+SugarCluster automates the entire distributed lifecycle, from configuration sweep generation to parallel execution, post-run verification, and data analysis. It supports a dual-backend execution model, allowing you to choose between standard SLURM job arrays and high-performance TAMULauncher execution.
 
 ## Requirements
 
@@ -17,11 +17,11 @@ All steps of the simulation and analysis pipeline are designed to run directly o
 
 > [!IMPORTANT]
 > **Cluster Configuration:**
-> You **MUST** replace the account number `ACCOUNT=155415875505` and the project directory path `PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project` in the commands below with your own HPRC project account number and absolute cluster path.
+> You must replace the account number `ACCOUNT=155415875505` and the project directory path `PROJECT_DIR=/scratch/group/p.cis260910.000/cpsc4520-project` in the commands below with your own HPRC project account number and absolute cluster path.
 
 > [!WARNING]
 > **File/Inode Quotas:**
-> A full 2,168-simulation sweep creates a massive footprint of **8,000+ files** (configs, output JSON logs, worker outputs, and timing logs). Be mindful of your ACES group disk/inode quotas. Use `make clean` to purge intermediate configurations and outputs after your final analysis runs are finished.
+> A full 2,168-simulation sweep creates a massive footprint of 8,000+ files (configs, output JSON logs, worker outputs, and timing logs). Be mindful of your ACES group disk/inode quotas. Use `make clean` to purge intermediate configurations and outputs after your final analysis runs are finished.
 
 ### 1. Setup on ACES
 Extract the project archive (or clone the repository) directly to your scratch space on the ACES cluster (e.g., under `/scratch/group/p.cis260910.000/cpsc4520-project/`).
@@ -121,7 +121,7 @@ make submit-tamu ACCOUNT=155415875505 PROJECT_DIR=/scratch/group/p.cis260910.000
 *Note: This requests 20 nodes with 12 tasks per node (240 slots) to process the sweep.*
 
 #### Option B: SLURM Job Array Backend
-SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 50 active tasks, we bundle **28 simulations per SLURM task**, resulting in 80 total tasks (78 active).
+SLURM Job Array runs a hybrid batch scheme. Since ACES limits the maximum array size to 80 active tasks, we bundle multiple simulations per SLURM task (dynamically adjusted), resulting in 80 total tasks (78 active).
 
 This is also simplified via the Makefile:
 ```bash
